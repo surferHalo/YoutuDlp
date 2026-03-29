@@ -1,0 +1,99 @@
+use std::fs;
+use std::path::{Path, PathBuf};
+
+use anyhow::{Context, Result};
+use directories::ProjectDirs;
+use serde::Serialize;
+
+#[derive(Debug, Clone)]
+pub struct AppPaths {
+    pub executable_dir: PathBuf,
+    pub data_root: PathBuf,
+    pub state_root: PathBuf,
+    pub settings_path: PathBuf,
+    pub queue_path: PathBuf,
+    pub tasks_dir: PathBuf,
+    pub playlists_dir: PathBuf,
+    pub attempts_dir: PathBuf,
+    pub library_dir: PathBuf,
+    pub runtime_dir: PathBuf,
+    pub logs_dir: PathBuf,
+}
+
+impl AppPaths {
+    pub fn discover() -> Result<Self> {
+        let current_executable =
+            std::env::current_exe().context("failed to locate bridge executable")?;
+        let executable_dir = current_executable
+            .parent()
+            .context("bridge executable has no parent directory")?
+            .to_path_buf();
+        let project_dirs = ProjectDirs::from("", "", "YoutuDlpBridge")
+            .context("failed to resolve application data directory")?;
+        let data_root = project_dirs.config_dir().to_path_buf();
+        let state_root = data_root.join("state");
+
+        Ok(Self {
+            executable_dir,
+            data_root,
+            settings_path: state_root.join("settings.json"),
+            queue_path: state_root.join("queue.json"),
+            tasks_dir: state_root.join("tasks"),
+            playlists_dir: state_root.join("playlists"),
+            attempts_dir: state_root.join("attempts"),
+            library_dir: state_root.join("library"),
+            runtime_dir: state_root.join("runtime"),
+            logs_dir: state_root.join("logs"),
+            state_root,
+        })
+    }
+
+    pub fn ensure_state_dirs(&self) -> Result<()> {
+        for directory in [
+            &self.data_root,
+            &self.state_root,
+            &self.tasks_dir,
+            &self.playlists_dir,
+            &self.attempts_dir,
+            &self.library_dir,
+            &self.runtime_dir,
+            &self.logs_dir,
+        ] {
+            fs::create_dir_all(directory).with_context(|| {
+                format!("failed to create state directory {}", directory.display())
+            })?;
+        }
+
+        Ok(())
+    }
+}
+
+pub fn write_json_pretty_atomic<T>(path: &Path, value: &T) -> Result<()>
+where
+    T: Serialize,
+{
+    let bytes = serde_json::to_vec_pretty(value).context("failed to serialize JSON")?;
+    write_atomic(path, &bytes)
+}
+
+pub fn write_atomic(path: &Path, bytes: &[u8]) -> Result<()> {
+    let parent = path
+        .parent()
+        .with_context(|| format!("path {} has no parent directory", path.display()))?;
+    let tmp_path = path.with_extension("tmp");
+
+    fs::create_dir_all(parent)
+        .with_context(|| format!("failed to create parent directory {}", parent.display()))?;
+    fs::write(&tmp_path, bytes)
+        .with_context(|| format!("failed to write temp file {}", tmp_path.display()))?;
+
+    if path.exists() {
+        fs::remove_file(path)
+            .with_context(|| format!("failed to replace existing file {}", path.display()))?;
+    }
+
+    fs::rename(&tmp_path, path)
+        .with_context(|| format!("failed to move temp file into place at {}", path.display()))?;
+
+    Ok(())
+}

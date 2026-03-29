@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>YoutuDlp Bridge</title>
+  <style>
+    :root {
+      --paper: #f6f0e5;
+      --ink: #182028;
+      --muted: #5e6a73;
+      --panel: rgba(255, 252, 246, 0.9);
+      --line: rgba(24, 32, 40, 0.14);
+      --success: #0b7a56;
+      --danger: #a3352a;
+      --shadow: 0 18px 40px rgba(71, 52, 24, 0.12);
+      --radius: 18px;
+      --mono: "Consolas", "SFMono-Regular", monospace;
+      --body: "Trebuchet MS", "Segoe UI", sans-serif;
+      --title: "Palatino Linotype", "Book Antiqua", Georgia, serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top left, rgba(188, 95, 4, 0.18), transparent 28%),
+        radial-gradient(circle at right 20%, rgba(17, 123, 117, 0.14), transparent 24%),
+        linear-gradient(180deg, #f2e6d3 0%, #f7f3ea 45%, #ece4d7 100%);
+      color: var(--ink);
+      font-family: var(--body);
+    }
+
+    .shell {
+      max-width: 1480px;
+      margin: 0 auto;
+      padding: 28px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 22px;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-family: var(--title);
+      font-size: clamp(2rem, 4vw, 3.4rem);
+      letter-spacing: 0.02em;
+    }
+
+    .brand p {
+      margin: 8px 0 0;
+      color: var(--muted);
+      max-width: 760px;
+      line-height: 1.45;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(255, 252, 246, 0.78);
+      border: 1px solid rgba(24, 32, 40, 0.12);
+      box-shadow: var(--shadow);
+      font-size: 0.95rem;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--success);
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+
+    .submit-panel,
+    .workspace-panel,
+    .sidebar-panel {
+      padding: 20px;
+    }
+
+    .submit-row,
+    .field-grid,
+    .workspace,
+    .status-grid,
+    .tool-grid,
+    .settings-grid {
+      display: grid;
+      gap: 14px;
+    }
+
+    .submit-row {
+      grid-template-columns: 1fr auto;
+      margin-bottom: 14px;
+    }
+
+    .field-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+      align-items: end;
+    }
+
+    .workspace {
+      grid-template-columns: minmax(0, 2.2fr) minmax(340px, 0.95fr);
+      align-items: start;
+      margin-top: 20px;
+    }
+
+    .left-column {
+      display: grid;
+      gap: 20px;
+    }
+
+    .status-grid,
+    .tool-grid {
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    }
+
+    .settings-grid {
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+
+    label {
+      display: block;
+      font-size: 0.84rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    input,
+    select,
+    button {
+      width: 100%;
+      border-radius: 12px;
+      border: 1px solid rgba(24, 32, 40, 0.12);
+      background: rgba(255, 255, 255, 0.88);
+      padding: 13px 14px;
+      font: inherit;
+      color: inherit;
+    }
+
+    button {
+      cursor: pointer;
+      background: linear-gradient(135deg, #c5650c, #a4490d);
+      color: white;
+      border: none;
+      box-shadow: 0 14px 26px rgba(164, 73, 13, 0.25);
+      transition: transform 140ms ease, filter 140ms ease;
+    }
+
+    button:hover {
+      filter: brightness(1.04);
+      transform: translateY(-1px);
+    }
+
+    button.secondary {
+      background: rgba(255, 255, 255, 0.9);
+      color: var(--ink);
+      border: 1px solid var(--line);
+      box-shadow: none;
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
+      transform: none;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 14px;
+    }
+
+    .section-head h2,
+    .section-head h3 {
+      margin: 0;
+      font-family: var(--title);
+      font-weight: 600;
+    }
+
+    .card {
+      padding: 16px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.62);
+    }
+
+    .card strong,
+    .tool-name {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 1rem;
+    }
+
+    .mono {
+      font-family: var(--mono);
+      font-size: 0.92rem;
+      word-break: break-all;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .pill {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      background: rgba(188, 95, 4, 0.12);
+      color: #8f4805;
+    }
+
+    .pill.ok {
+      background: rgba(11, 122, 86, 0.12);
+      color: var(--success);
+    }
+
+    .pill.fail {
+      background: rgba(163, 53, 42, 0.12);
+      color: var(--danger);
+    }
+
+    .parse-result {
+      margin-top: 14px;
+      padding: 14px;
+      border-radius: 14px;
+      background: linear-gradient(120deg, rgba(242, 194, 133, 0.24), rgba(255, 255, 255, 0.7));
+      color: var(--muted);
+      min-height: 82px;
+    }
+
+    .queue-item,
+    .tree-item {
+      padding: 14px 0;
+      border-bottom: 1px dashed rgba(24, 32, 40, 0.1);
+    }
+
+    .queue-item:last-child,
+    .tree-item:last-child {
+      border-bottom: none;
+    }
+
+    .task-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .task-main {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .task-name {
+      font-weight: 700;
+      line-height: 1.35;
+    }
+
+    .task-meta,
+    .task-subline {
+      color: var(--muted);
+      font-size: 0.93rem;
+      line-height: 1.45;
+      margin-top: 6px;
+    }
+
+    .task-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .task-actions button {
+      width: auto;
+      min-width: 92px;
+      padding: 10px 12px;
+      font-size: 0.92rem;
+    }
+
+    .footer-note {
+      margin-top: 18px;
+      font-size: 0.95rem;
+      color: var(--muted);
+    }
+
+    .empty {
+      color: var(--muted);
+      padding: 10px 0 0;
+    }
+
+    @media (max-width: 1080px) {
+      .field-grid,
+      .workspace {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .shell {
+        padding: 18px;
+      }
+
+      .topbar,
+      .section-head,
+      .task-row {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .submit-row {
+        grid-template-columns: 1fr;
+      }
+
+      .task-actions {
+        width: 100%;
+        justify-content: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <h1>YoutuDlp Bridge</h1>
+        <p>当前页面已经接入 M2：支持 URL 解析、重复检测、单视频入队、基础调度，以及 Stop、继续下载、Restart 的控制链路。</p>
+      </div>
+      <div class="badge"><span class="dot"></span><span id="bridgeStatus">正在连接 Bridge...</span></div>
+    </header>
+
+    <section class="panel submit-panel">
+      <div class="submit-row">
+        <div>
+          <label for="url">URL</label>
+          <input id="url" type="text" placeholder="粘贴单视频或播放列表链接" />
+        </div>
+        <div>
+          <label>&nbsp;</label>
+          <button id="parseBtn" class="secondary" type="button">解析 URL</button>
+        </div>
+      </div>
+      <div class="field-grid">
+        <div>
+          <label for="downloadMode">下载类型</label>
+          <select id="downloadMode">
+            <option value="video">视频</option>
+            <option value="audio">音频</option>
+          </select>
+        </div>
+        <div>
+          <label for="quality">清晰度</label>
+          <input id="quality" type="text" value="720p" />
+        </div>
+        <div>
+          <label for="container">封装格式</label>
+          <input id="container" type="text" value="mp4" />
+        </div>
+        <div>
+          <label for="targetSubdir">目标子目录</label>
+          <input id="targetSubdir" type="text" placeholder="可留空，表示根目录" />
+        </div>
+        <div>
+          <label>&nbsp;</label>
+          <button id="queueBtn" type="button" disabled>加入队列</button>
+        </div>
+      </div>
+      <div id="parseResult" class="parse-result">先粘贴 URL 并点击“解析 URL”。如果命中重复，会在这里直接显示去重结果。</div>
+    </section>
+
+    <div class="workspace">
+      <div class="left-column">
+        <section class="panel workspace-panel">
+          <div class="section-head">
+            <h2>任务队列</h2>
+            <span class="muted" id="queueSummary">读取中...</span>
+          </div>
+          <div id="queueList" class="empty">正在读取任务队列...</div>
+        </section>
+
+        <section class="panel workspace-panel">
+          <div class="section-head">
+            <h2>服务状态</h2>
+            <span class="muted" id="startedAt">读取中...</span>
+          </div>
+          <div class="status-grid" id="statusGrid"></div>
+        </section>
+
+        <section class="panel workspace-panel">
+          <div class="section-head">
+            <h2>全局设置</h2>
+            <button id="saveSettings" type="button">保存设置</button>
+          </div>
+          <div class="settings-grid">
+            <div>
+              <label for="downloadRoot">下载根目录</label>
+              <input id="downloadRoot" type="text" placeholder="例如 D:/Downloads" />
+            </div>
+            <div>
+              <label for="maxConcurrentDownloads">最大并发</label>
+              <input id="maxConcurrentDownloads" type="number" min="1" max="8" />
+            </div>
+            <div>
+              <label for="defaultTargetSubdir">默认目标子目录</label>
+              <input id="defaultTargetSubdir" type="text" placeholder="可留空" />
+            </div>
+            <div>
+              <label for="defaultDownloadMode">默认下载类型</label>
+              <select id="defaultDownloadMode">
+                <option value="video">视频</option>
+                <option value="audio">音频</option>
+              </select>
+            </div>
+            <div>
+              <label for="defaultContainer">默认封装格式</label>
+              <input id="defaultContainer" type="text" />
+            </div>
+            <div>
+              <label for="defaultQuality">默认清晰度</label>
+              <input id="defaultQuality" type="text" />
+            </div>
+          </div>
+          <div class="settings-grid" style="margin-top: 16px;">
+            <div class="card">
+              <strong>浏览器自动打开</strong>
+              <label><input id="openBrowserOnFirstLaunch" type="checkbox" style="width:auto; margin-right: 8px;" />首次启动自动打开</label>
+              <label><input id="openBrowserOnLaterLaunch" type="checkbox" style="width:auto; margin-right: 8px;" />后续启动自动打开</label>
+              <label><input id="showAdvancedByDefault" type="checkbox" style="width:auto; margin-right: 8px;" />默认展开高级模式</label>
+            </div>
+            <div class="card">
+              <strong>工具覆盖路径</strong>
+              <label for="ytDlpPath">yt-dlp</label>
+              <input id="ytDlpPath" type="text" placeholder="可留空，默认同目录发现" />
+              <label for="ffmpegPath" style="margin-top: 10px;">ffmpeg</label>
+              <input id="ffmpegPath" type="text" placeholder="可留空" />
+              <label for="ffprobePath" style="margin-top: 10px;">ffprobe</label>
+              <input id="ffprobePath" type="text" placeholder="可留空" />
+            </div>
+          </div>
+          <div class="footer-note" id="settingsMessage">保存后会即时刷新 Bridge 的工具发现结果。</div>
+        </section>
+      </div>
+
+      <aside class="panel sidebar-panel">
+        <div class="section-head">
+          <h3>下载库与工具</h3>
+          <span class="pill">M2/M3</span>
+        </div>
+        <div class="tree-item">
+          <div class="muted">当前先用队列和输出文件列表验证下载主链路。树状下载库和当前选择区会在后续阶段接入。</div>
+        </div>
+        <div class="tree-item">
+          <div class="section-head" style="margin-bottom: 8px;">
+            <strong>工具发现</strong>
+            <span class="pill" id="toolSummary">读取中</span>
+          </div>
+          <div class="muted" id="toolSummaryText">正在检查 sidecar 工具状态。</div>
+        </div>
+        <div class="tool-grid" id="toolGrid" style="margin-top: 14px;"></div>
+      </aside>
+    </div>
+  </div>
+
+  <script>
+    const statusGrid = document.getElementById('statusGrid');
+    const toolGrid = document.getElementById('toolGrid');
+    const bridgeStatus = document.getElementById('bridgeStatus');
+    const startedAt = document.getElementById('startedAt');
+    const settingsMessage = document.getElementById('settingsMessage');
+    const toolSummary = document.getElementById('toolSummary');
+    const toolSummaryText = document.getElementById('toolSummaryText');
+    const parseResult = document.getElementById('parseResult');
+    const queueList = document.getElementById('queueList');
+    const queueSummary = document.getElementById('queueSummary');
+    const parseBtn = document.getElementById('parseBtn');
+    const queueBtn = document.getElementById('queueBtn');
+
+    const formFields = {
+      url: document.getElementById('url'),
+      downloadMode: document.getElementById('downloadMode'),
+      quality: document.getElementById('quality'),
+      container: document.getElementById('container'),
+      targetSubdir: document.getElementById('targetSubdir')
+    };
+
+    const settingsFields = {
+      downloadRoot: document.getElementById('downloadRoot'),
+      maxConcurrentDownloads: document.getElementById('maxConcurrentDownloads'),
+      defaultTargetSubdir: document.getElementById('defaultTargetSubdir'),
+      defaultDownloadMode: document.getElementById('defaultDownloadMode'),
+      defaultContainer: document.getElementById('defaultContainer'),
+      defaultQuality: document.getElementById('defaultQuality'),
+      openBrowserOnFirstLaunch: document.getElementById('openBrowserOnFirstLaunch'),
+      openBrowserOnLaterLaunch: document.getElementById('openBrowserOnLaterLaunch'),
+      showAdvancedByDefault: document.getElementById('showAdvancedByDefault'),
+      ytDlpPath: document.getElementById('ytDlpPath'),
+      ffmpegPath: document.getElementById('ffmpegPath'),
+      ffprobePath: document.getElementById('ffprobePath')
+    };
+
+    let currentStatus = null;
+    let lastResolved = null;
+    let pollHandle = null;
+
+    async function initialize() {
+      await Promise.all([loadStatus(), loadSettings(), loadTasks()]);
+      startPolling();
+    }
+
+    async function loadStatus() {
+      const response = await fetch('/api/app/status');
+      if (!response.ok) {
+        throw new Error('无法读取 Bridge 状态');
+      }
+
+      currentStatus = await response.json();
+      bridgeStatus.textContent = currentStatus.firstLaunch ? 'Bridge 运行中 · 首次启动' : 'Bridge 运行中';
+      startedAt.textContent = `启动时间 ${new Date(currentStatus.startedAt).toLocaleString()}`;
+      renderStatus(currentStatus);
+      renderTools(currentStatus.tools);
+    }
+
+    async function loadSettings() {
+      const response = await fetch('/api/settings');
+      if (!response.ok) {
+        throw new Error('无法读取设置');
+      }
+
+      const settings = await response.json();
+      settingsFields.downloadRoot.value = settings.downloadRoot || '';
+      settingsFields.maxConcurrentDownloads.value = settings.maxConcurrentDownloads || 3;
+      settingsFields.defaultTargetSubdir.value = settings.defaultTargetSubdir || '';
+      settingsFields.defaultDownloadMode.value = settings.defaultDownloadMode || 'video';
+      settingsFields.defaultContainer.value = settings.defaultContainer || 'mp4';
+      settingsFields.defaultQuality.value = settings.defaultQuality || '1080p';
+      settingsFields.openBrowserOnFirstLaunch.checked = Boolean(settings.openBrowserOnFirstLaunch);
+      settingsFields.openBrowserOnLaterLaunch.checked = Boolean(settings.openBrowserOnLaterLaunch);
+      settingsFields.showAdvancedByDefault.checked = Boolean(settings.showAdvancedByDefault);
+      settingsFields.ytDlpPath.value = settings.toolOverrides?.ytDlpPath || '';
+      settingsFields.ffmpegPath.value = settings.toolOverrides?.ffmpegPath || '';
+      settingsFields.ffprobePath.value = settings.toolOverrides?.ffprobePath || '';
+
+      formFields.downloadMode.value = settings.defaultDownloadMode || 'video';
+      formFields.quality.value = settings.defaultQuality || '1080p';
+      formFields.container.value = settings.defaultContainer || 'mp4';
+      formFields.targetSubdir.value = settings.defaultTargetSubdir || '';
+    }
+
+    async function loadTasks() {
+      const response = await fetch('/api/tasks');
+      if (!response.ok) {
+        throw new Error('无法读取任务队列');
+      }
+
+      const payload = await response.json();
+      renderTasks(payload.tasks || []);
+    }
+
+    async function parseCurrentUrl() {
+      const request = collectResolveRequest();
+      if (!request.url) {
+        parseResult.textContent = '请先输入 URL。';
+        return;
+      }
+
+      setParseBusy(true);
+      parseResult.textContent = '正在解析 URL...';
+
+      try {
+        const response = await fetch('/api/resolve', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(request)
+        });
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload?.error?.message || '解析失败');
+        }
+
+        lastResolved = payload;
+        queueBtn.disabled = Boolean(payload.resolved?.isPlaylist);
+        renderResolve(payload);
+      } catch (error) {
+        lastResolved = null;
+        queueBtn.disabled = true;
+        parseResult.textContent = `解析失败: ${String(error.message || error)}`;
+      } finally {
+        setParseBusy(false);
+      }
+    }
+
+    async function addToQueue() {
+      if (!lastResolved?.resolved) {
+        parseResult.textContent = '请先完成解析。';
+        return;
+      }
+
+      if (lastResolved.resolved.isPlaylist) {
+        parseResult.textContent = 'M2 当前只支持单视频入队，播放列表会在后续阶段接入。';
+        return;
+      }
+
+      queueBtn.disabled = true;
+
+      try {
+        const body = {
+          sourceUrl: lastResolved.resolved.sourceUrl,
+          targetSubdir: formFields.targetSubdir.value.trim(),
+          downloadMode: formFields.downloadMode.value,
+          quality: formFields.quality.value.trim(),
+          container: formFields.container.value.trim(),
+          resolved: lastResolved.resolved
+        };
+
+        const response = await fetch('/api/tasks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload?.error?.message || '入队失败');
+        }
+
+        parseResult.textContent = `已加入队列: ${payload.title}`;
+        await loadTasks();
+      } catch (error) {
+        parseResult.textContent = `入队失败: ${String(error.message || error)}`;
+      } finally {
+        queueBtn.disabled = false;
+      }
+    }
+
+    async function invokeTaskAction(taskId, action) {
+      try {
+        const response = await fetch(`/api/tasks/${encodeURIComponent(taskId)}/${action}`, {
+          method: 'POST'
+        });
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload?.error?.message || '任务操作失败');
+        }
+
+        await loadTasks();
+      } catch (error) {
+        parseResult.textContent = `任务操作失败: ${String(error.message || error)}`;
+      }
+    }
+
+    async function saveSettings() {
+      settingsMessage.textContent = '正在保存设置...';
+
+      try {
+        const response = await fetch('/api/settings', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(collectSettings())
+        });
+
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload?.error?.message || '保存失败');
+        }
+
+        settingsMessage.textContent = '设置已保存，Bridge 状态和工具发现已刷新。';
+        await Promise.all([loadStatus(), loadSettings()]);
+      } catch (error) {
+        settingsMessage.textContent = `保存失败: ${String(error.message || error)}`;
+      }
+    }
+
+    function renderStatus(status) {
+      const cards = [
+        { title: '监听地址', value: status.baseUrl },
+        { title: '程序目录', value: status.executableDir },
+        { title: '状态目录', value: status.stateDir },
+        { title: '队列文件', value: status.queuePath },
+        { title: '下载根目录', value: status.downloadRoot }
+      ];
+
+      statusGrid.innerHTML = cards.map(card => `
+        <div class="card">
+          <strong>${escapeHtml(card.title)}</strong>
+          <div class="mono">${escapeHtml(String(card.value ?? ''))}</div>
+        </div>
+      `).join('');
+    }
+
+    function renderTools(tools) {
+      const list = [tools.ytDlp, tools.ffmpeg, tools.ffprobe];
+      const availableCount = list.filter(tool => tool.available).length;
+      toolSummary.textContent = `${availableCount}/${list.length} 可用`;
+      toolSummary.className = `pill ${tools.ytDlp?.available ? 'ok' : 'fail'}`;
+      toolSummaryText.textContent = tools.ytDlp?.available
+        ? 'yt-dlp 已可用，当前可以直接完成解析、入队和下载。'
+        : 'yt-dlp 当前缺失。请设置覆盖路径，或把工具放到 Bridge 可执行文件同目录。';
+
+      toolGrid.innerHTML = list.map(tool => `
+        <div class="card">
+          <span class="tool-name">${escapeHtml(tool.name)}</span>
+          <span class="pill ${tool.available ? 'ok' : 'fail'}">${tool.available ? '已发现' : '缺失'}</span>
+          <div class="muted" style="margin-top: 10px;">来源: ${escapeHtml(tool.source)}</div>
+          <div class="mono" style="margin-top: 8px;">${escapeHtml(tool.path || '未找到工具路径')}</div>
+          <div class="muted" style="margin-top: 8px;">${escapeHtml(tool.version || '无法读取版本')}</div>
+        </div>
+      `).join('');
+    }
+
+    function renderResolve(payload) {
+      const resolved = payload.resolved;
+      const duplicate = payload.duplicateCheck;
+      const duplicateText = duplicate.status === 'duplicate-found'
+        ? `命中重复 ${duplicate.matches.length} 条，默认动作是 Skip。`
+        : '未命中重复。';
+      const playlistText = resolved.isPlaylist
+        ? `当前识别为播放列表，共 ${resolved.playlistCount || '?'} 项。M2 暂不支持播放列表入队。`
+        : '当前识别为单视频任务，可直接加入队列。';
+
+      parseResult.innerHTML = `
+        <strong>${escapeHtml(resolved.title)}</strong><br />
+        提取器: ${escapeHtml(resolved.extractor || '未知')} · 时长: ${formatDuration(resolved.durationSeconds)} · 预估大小: ${formatBytes(resolved.estimatedSizeBytes)}<br />
+        ${escapeHtml(playlistText)}<br />
+        ${escapeHtml(duplicateText)}
+      `;
+    }
+
+    function renderTasks(tasks) {
+      queueSummary.textContent = `${tasks.length} 项任务`;
+
+      if (!tasks.length) {
+        queueList.innerHTML = '<div class="empty">队列为空。先解析一个单视频 URL，再把它加入队列。</div>';
+        return;
+      }
+
+      queueList.innerHTML = tasks.map(task => {
+        const stateClass = task.state === 'completed' ? 'ok' : task.state === 'failed' ? 'fail' : '';
+        const meta = [
+          `状态: ${task.state}`,
+          `模式: ${task.downloadMode}`,
+          `质量: ${task.quality}`,
+          task.container ? `封装: ${task.container}` : null,
+          task.targetSubdir ? `目录: ${task.targetSubdir}` : '目录: 根目录'
+        ].filter(Boolean).join(' · ');
+        const subline = task.lastError || latestLog(task) || `进度: ${formatProgress(task.progress)}`;
+
+        return `
+          <div class="queue-item">
+            <div class="task-row">
+              <div class="task-main">
+                <div class="task-name">${escapeHtml(task.title)}</div>
+                <div class="task-meta">${escapeHtml(meta)}</div>
+                <div class="task-subline">${escapeHtml(subline)}</div>
+              </div>
+              <div class="task-actions">
+                <span class="pill ${stateClass}">${escapeHtml(task.state)}</span>
+                ${renderTaskButtons(task)}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      queueList.querySelectorAll('[data-task-action]').forEach(button => {
+        button.addEventListener('click', event => {
+          const taskId = event.currentTarget.getAttribute('data-task-id');
+          const action = event.currentTarget.getAttribute('data-task-action');
+          invokeTaskAction(taskId, action);
+        });
+      });
+    }
+
+    function renderTaskButtons(task) {
+      if (task.state === 'downloading') {
+        return `<button type="button" data-task-id="${escapeHtml(task.id)}" data-task-action="stop">Stop</button>`;
+      }
+
+      if (task.state === 'paused') {
+        return `
+          <button type="button" class="secondary" data-task-id="${escapeHtml(task.id)}" data-task-action="resume">继续下载</button>
+          <button type="button" data-task-id="${escapeHtml(task.id)}" data-task-action="restart">Restart</button>
+        `;
+      }
+
+      if (task.state === 'failed') {
+        return `
+          <button type="button" class="secondary" data-task-id="${escapeHtml(task.id)}" data-task-action="resume">Retry</button>
+          <button type="button" data-task-id="${escapeHtml(task.id)}" data-task-action="restart">Restart</button>
+        `;
+      }
+
+      if (task.state === 'completed') {
+        return `<button type="button" data-task-id="${escapeHtml(task.id)}" data-task-action="restart">Restart</button>`;
+      }
+
+      return '';
+    }
+
+    function collectResolveRequest() {
+      return {
+        url: formFields.url.value.trim(),
+        downloadMode: formFields.downloadMode.value,
+        quality: formFields.quality.value.trim(),
+        container: formFields.container.value.trim(),
+        targetSubdir: formFields.targetSubdir.value.trim()
+      };
+    }
+
+    function collectSettings() {
+      return {
+        downloadRoot: settingsFields.downloadRoot.value.trim(),
+        maxConcurrentDownloads: Number(settingsFields.maxConcurrentDownloads.value || 3),
+        openBrowserOnFirstLaunch: settingsFields.openBrowserOnFirstLaunch.checked,
+        openBrowserOnLaterLaunch: settingsFields.openBrowserOnLaterLaunch.checked,
+        incompleteTaskRecovery: 'manual',
+        defaultTargetSubdir: settingsFields.defaultTargetSubdir.value.trim(),
+        showAdvancedByDefault: settingsFields.showAdvancedByDefault.checked,
+        defaultDownloadMode: settingsFields.defaultDownloadMode.value,
+        defaultContainer: settingsFields.defaultContainer.value.trim(),
+        defaultQuality: settingsFields.defaultQuality.value.trim(),
+        toolOverrides: {
+          ytDlpPath: emptyToNull(settingsFields.ytDlpPath.value),
+          ffmpegPath: emptyToNull(settingsFields.ffmpegPath.value),
+          ffprobePath: emptyToNull(settingsFields.ffprobePath.value)
+        }
+      };
+    }
+
+    function latestLog(task) {
+      if (!Array.isArray(task.recentLogs) || !task.recentLogs.length) {
+        return `进度: ${formatProgress(task.progress)}`;
+      }
+      return task.recentLogs[task.recentLogs.length - 1];
+    }
+
+    function formatProgress(progress) {
+      if (!progress || typeof progress.percent !== 'number') {
+        return '0.0%';
+      }
+      return `${progress.percent.toFixed(1)}%`;
+    }
+
+    function setParseBusy(isBusy) {
+      parseBtn.disabled = isBusy;
+      queueBtn.disabled = isBusy || !lastResolved || Boolean(lastResolved?.resolved?.isPlaylist);
+    }
+
+    function startPolling() {
+      if (pollHandle) {
+        clearInterval(pollHandle);
+      }
+
+      pollHandle = setInterval(() => {
+        loadTasks().catch(error => {
+          queueSummary.textContent = `刷新失败: ${String(error.message || error)}`;
+        });
+      }, 2500);
+    }
+
+    function formatBytes(value) {
+      if (!value && value !== 0) {
+        return '未知';
+      }
+
+      const units = ['B', 'KiB', 'MiB', 'GiB'];
+      let number = value;
+      let unitIndex = 0;
+      while (number >= 1024 && unitIndex < units.length - 1) {
+        number /= 1024;
+        unitIndex += 1;
+      }
+
+      return `${number.toFixed(unitIndex === 0 ? 0 : 2)} ${units[unitIndex]}`;
+    }
+
+    function formatDuration(seconds) {
+      if (!seconds && seconds !== 0) {
+        return '未知';
+      }
+
+      const total = Number(seconds);
+      const h = Math.floor(total / 3600);
+      const m = Math.floor((total % 3600) / 60);
+      const s = total % 60;
+      if (h > 0) {
+        return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+      }
+      return `${m}:${String(s).padStart(2, '0')}`;
+    }
+
+    function emptyToNull(value) {
+      const trimmed = value.trim();
+      return trimmed ? trimmed : null;
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    parseBtn.addEventListener('click', parseCurrentUrl);
+    queueBtn.addEventListener('click', addToQueue);
+    document.getElementById('saveSettings').addEventListener('click', saveSettings);
+
+    initialize().catch(error => {
+      bridgeStatus.textContent = '初始化失败';
+      settingsMessage.textContent = `初始化失败: ${String(error.message || error)}`;
+      queueList.innerHTML = `<div class="empty">初始化失败: ${escapeHtml(String(error.message || error))}</div>`;
+    });
+  </script>
+</body>
+</html>
