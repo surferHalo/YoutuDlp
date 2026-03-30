@@ -1366,6 +1366,7 @@ dependencies = [
  "chrono",
  "directories",
  "dirs",
+ "libc",
  "serde",
  "serde_json",
  "tokio",

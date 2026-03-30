@@ -615,22 +615,19 @@ async fn delete_task(
     // scheduler may have started between us loading the task and draining
     // the queue (race window).
     for _pass in 0..2 {
-        let (pids, done_rxs): (Vec<_>, Vec<_>) = {
+        let done_rxs: Vec<_> = {
             let mut active = state.active_downloads.lock().expect("lock poisoned");
             child_ids
                 .iter()
                 .filter_map(|id| active.remove(id))
                 .map(|dl| {
                     let _ = dl.stop_tx.send(());
-                    (dl.pid, dl.process_done)
+                    dl.process_done
                 })
-                .unzip()
+                .collect()
         };
-        if pids.is_empty() {
+        if done_rxs.is_empty() {
             break;
-        }
-        for pid in &pids {
-            downloads::kill_process_tree(*pid).await;
         }
         for rx in done_rxs {
             let _ = tokio::time::timeout(
@@ -672,6 +669,7 @@ async fn delete_task(
 
     // Clean up any partial/temp files left in the download directory.
     for t in &tasks_to_clean {
+        downloads::ensure_download_processes_stopped(&download_root, t).await;
         downloads::delete_related_partial_files(&download_root, t).await;
     }
 

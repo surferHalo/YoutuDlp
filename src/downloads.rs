@@ -8,6 +8,9 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 use tracing::{error, warn};
 
+#[cfg(unix)]
+use std::os::unix::process::CommandExt as _;
+
 use crate::app::{ActiveDownload, AppState};
 use crate::cookies::cookie_file_path;
 use crate::events::{self, ServerEvent};
@@ -264,7 +267,7 @@ async fn start_download(state: Arc<AppState>, mut task: TaskRecord) -> Result<()
             .active_downloads
             .lock()
             .expect("active download lock poisoned");
-        active.insert(task.id.clone(), ActiveDownload { stop_tx, pid: child.id(), process_done: done_rx });
+        active.insert(task.id.clone(), ActiveDownload { stop_tx, process_done: done_rx });
     }
 
     if let Some(stdout) = stdout {
@@ -300,9 +303,15 @@ fn spawn_waiter(
         let wait_result = tokio::select! {
             result = child.wait() => result,
             _ = stop_rx.recv() => {
-                let _ = child.start_kill();
                 kill_process_tree(pid).await;
-                child.wait().await
+
+                match tokio::time::timeout(std::time::Duration::from_secs(10), child.wait()).await {
+                    Ok(result) => result,
+                    Err(_) => {
+                        let _ = child.start_kill();
+                        child.wait().await
+                    }
+                }
             }
         };
 
@@ -338,8 +347,166 @@ pub async fn kill_process_tree(pid: Option<u32>) {
             Err(e) => warn!("failed to run taskkill for PID {pid}: {e}"),
         }
     }
-    #[cfg(not(windows))]
+    #[cfg(unix)]
+    {
+        let pgid = pid as i32;
+        let rc = unsafe { libc::kill(-pgid, libc::SIGKILL) };
+        if rc != 0 {
+            let error = std::io::Error::last_os_error();
+            if error.raw_os_error() != Some(libc::ESRCH) {
+                warn!("failed to kill process group {pgid}: {error}");
+            }
+        }
+    }
+    #[cfg(not(any(windows, unix)))]
     let _ = pid;
+}
+
+#[cfg(windows)]
+fn powershell_single_quote(value: &str) -> String {
+    value.replace('\'', "''")
+}
+
+#[cfg(windows)]
+fn download_process_needles(download_root: &Path, task: &TaskRecord) -> Vec<String> {
+    let mut needles = Vec::new();
+    if let Some(video_id) = task.video_id.as_deref().filter(|value| !value.trim().is_empty()) {
+        needles.push(video_id.to_string());
+    }
+    if !task.source_url.trim().is_empty() {
+        needles.push(task.source_url.clone());
+    }
+    if !task.target_subdir.trim().is_empty() {
+        needles.push(task.target_subdir.replace('/', "\\"));
+    }
+    for path in partial_file_candidates(download_root, task) {
+        let full_path = path.to_string_lossy().replace('/', "\\");
+        needles.push(full_path);
+        if let Some(name) = path.file_name().and_then(|value| value.to_str()) {
+            needles.push(name.to_string());
+        }
+    }
+    needles.sort();
+    needles.dedup();
+    needles
+}
+
+#[cfg(windows)]
+async fn matching_download_helper_pids(download_root: &Path, task: &TaskRecord) -> Vec<u32> {
+    let needles = download_process_needles(download_root, task);
+    if needles.is_empty() {
+        return Vec::new();
+    }
+
+    let contains_checks = needles
+        .iter()
+        .map(|needle| {
+            format!(
+                "$cmd.IndexOf('{}', [System.StringComparison]::OrdinalIgnoreCase) -ge 0",
+                powershell_single_quote(needle)
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(" -or ");
+
+    let script = format!(
+        "$ErrorActionPreference='SilentlyContinue'; \
+         Get-CimInstance Win32_Process | Where-Object {{ \
+         $cmd = $_.CommandLine; $name = $_.Name; \
+         $cmd -and ($name -in @('yt-dlp.exe','yt-dlp','ffmpeg.exe','ffmpeg','python.exe','pythonw.exe')) -and ({contains_checks}) \
+         }} | Select-Object -ExpandProperty ProcessId"
+    );
+
+    let output = match Command::new("powershell")
+        .args(["-NoProfile", "-NonInteractive", "-Command", &script])
+        .kill_on_drop(true)
+        .output()
+        .await
+    {
+        Ok(output) => output,
+        Err(e) => {
+            warn!("failed to query matching download helper processes: {e}");
+            return Vec::new();
+        }
+    };
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        if !stderr.trim().is_empty() {
+            warn!("failed to query matching download helper processes: {stderr}");
+        }
+        return Vec::new();
+    }
+
+    String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .filter_map(|line| line.trim().parse::<u32>().ok())
+        .collect()
+}
+
+pub async fn ensure_download_processes_stopped(download_root: &Path, task: &TaskRecord) {
+    #[cfg(windows)]
+    {
+        for _ in 0..20 {
+            let pids = matching_download_helper_pids(download_root, task).await;
+            if pids.is_empty() {
+                return;
+            }
+
+            for pid in pids {
+                kill_process_tree(Some(pid)).await;
+            }
+
+            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+        }
+
+        let remaining = matching_download_helper_pids(download_root, task).await;
+        if !remaining.is_empty() {
+            warn!(
+                "matching helper processes still alive for video_id={}: {:?}",
+                task.video_id.as_deref().unwrap_or(""),
+                remaining
+            );
+        }
+    }
+
+    #[cfg(not(windows))]
+    let _ = (download_root, task);
+}
+
+fn partial_file_candidates(download_root: &Path, task: &TaskRecord) -> Vec<std::path::PathBuf> {
+    let output_dir = if task.target_subdir.trim().is_empty() {
+        download_root.to_path_buf()
+    } else {
+        download_root.join(&task.target_subdir)
+    };
+    if !output_dir.exists() {
+        return Vec::new();
+    }
+
+    let video_id = task.video_id.clone().unwrap_or_default();
+    let Ok(entries) = std::fs::read_dir(&output_dir) else { return Vec::new() };
+    entries
+        .flatten()
+        .filter_map(|entry| {
+            let Ok(ft) = entry.file_type() else { return None };
+            if !ft.is_file() {
+                return None;
+            }
+            let path = entry.path();
+            let name = entry.file_name().to_string_lossy().to_string();
+            let matches_task = !video_id.is_empty() && name.contains(video_id.as_str());
+            let is_partial = name.ends_with(".part")
+                || name.ends_with(".ytdl")
+                || name.contains(".frag")
+                || name.ends_with(".temp");
+            if matches_task && is_partial {
+                Some(path)
+            } else {
+                None
+            }
+        })
+        .collect()
 }
 
 fn build_command(
@@ -350,6 +517,24 @@ fn build_command(
     output_dir: &Path,
 ) -> Command {
     let mut command = Command::new(yt_dlp_path);
+
+    #[cfg(unix)]
+    unsafe {
+        command.pre_exec(|| {
+            if libc::setpgid(0, 0) == 0 {
+                Ok(())
+            } else {
+                Err(std::io::Error::last_os_error())
+            }
+        });
+    }
+
+    #[cfg(windows)]
+    {
+        const CREATE_NEW_PROCESS_GROUP: u32 = 0x0000_0200;
+        command.creation_flags(CREATE_NEW_PROCESS_GROUP);
+    }
+
     command
         .arg("--newline")
         .arg("--progress")
@@ -438,7 +623,20 @@ async fn handle_output_line(state: Arc<AppState>, task_id: &str, line: &str) -> 
         entry.push_log(line.to_string());
     }
 
-    let task = state.task_store.load_task(task_id)?;
+    let task = match state.task_store.load_task(task_id) {
+        Ok(task) => task,
+        Err(error) => {
+            let is_active = state
+                .active_downloads
+                .lock()
+                .expect("active download lock poisoned")
+                .contains_key(task_id);
+            if is_active {
+                return Err(error);
+            }
+            return Ok(());
+        }
+    };
     let view = build_task_view(&state, &task).await;
     events::publish(&state.event_tx, ServerEvent::task_updated(&view));
     Ok(())

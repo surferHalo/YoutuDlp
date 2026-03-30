@@ -37,8 +37,6 @@ pub struct AppState {
 #[derive(Debug)]
 pub struct ActiveDownload {
     pub stop_tx: tokio::sync::mpsc::UnboundedSender<()>,
-    /// OS process ID of the yt-dlp child process.
-    pub pid: Option<u32>,
     /// Fires exactly once after `child.wait()` completes, guaranteeing the OS
     /// has released all file handles held by the process.
     pub process_done: tokio::sync::oneshot::Receiver<()>,
