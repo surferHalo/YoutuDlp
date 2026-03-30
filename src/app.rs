@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
@@ -10,9 +10,11 @@ use tokio::sync::RwLock;
 use tracing::{info, warn};
 
 use crate::downloads;
+use crate::events::{self, ServerEvent};
+use crate::library;
 use crate::settings::{AppSettings, SettingsStore};
 use crate::storage::AppPaths;
-use crate::tasks::TaskStore;
+use crate::tasks::{RuntimeState, TaskStore};
 use crate::tools::ToolRegistry;
 use crate::web;
 
@@ -25,13 +27,21 @@ pub struct AppState {
     pub settings: RwLock<AppSettings>,
     pub tools: RwLock<ToolRegistry>,
     pub active_downloads: Mutex<HashMap<String, ActiveDownload>>,
+    pub runtime_states: RwLock<HashMap<String, RuntimeState>>,
+    pub library_filenames: RwLock<HashSet<String>>,
     pub scheduler_running: AtomicBool,
+    pub event_tx: tokio::sync::broadcast::Sender<ServerEvent>,
     pub startup: StartupInfo,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct ActiveDownload {
     pub stop_tx: tokio::sync::mpsc::UnboundedSender<()>,
+    /// OS process ID of the yt-dlp child process.
+    pub pid: Option<u32>,
+    /// Fires exactly once after `child.wait()` completes, guaranteeing the OS
+    /// has released all file handles held by the process.
+    pub process_done: tokio::sync::oneshot::Receiver<()>,
 }
 
 #[derive(Debug, Clone)]
@@ -63,6 +73,7 @@ pub async fn run() -> Result<()> {
         .await
         .with_context(|| format!("failed to bind local HTTP server at {DEFAULT_BIND_ADDRESS}"))?;
     let base_url = format!("http://{}", listener.local_addr()?);
+    let (event_tx, _) = tokio::sync::broadcast::channel(256);
 
     let state = Arc::new(AppState {
         paths: paths.clone(),
@@ -71,7 +82,10 @@ pub async fn run() -> Result<()> {
         settings: RwLock::new(settings.clone()),
         tools: RwLock::new(tools),
         active_downloads: Mutex::new(HashMap::new()),
+        runtime_states: RwLock::new(HashMap::new()),
+        library_filenames: RwLock::new(library::collect_filenames(&settings.download_root)),
         scheduler_running: AtomicBool::new(false),
+        event_tx,
         startup: StartupInfo {
             started_at: Utc::now().to_rfc3339(),
             base_url: base_url.clone(),
@@ -79,6 +93,8 @@ pub async fn run() -> Result<()> {
             executable_dir: paths.executable_dir.clone(),
         },
     });
+
+    events::publish(&state.event_tx, ServerEvent::app_ready(&base_url));
 
     if should_open_browser(&settings, is_first_launch) {
         if let Err(error) = webbrowser::open(&base_url) {

@@ -117,7 +117,7 @@
     }
 
     .workspace {
-      grid-template-columns: minmax(0, 2.2fr) minmax(340px, 0.95fr);
+      grid-template-columns: 1fr;
       align-items: start;
       margin-top: 20px;
     }
@@ -127,7 +127,31 @@
       gap: 20px;
     }
 
-    .status-grid,
+    #statusGrid {
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    }
+
+    .status-card-value {
+      white-space: normal;
+      word-break: break-all;
+      cursor: pointer;
+      padding: 4px 0 2px;
+      border-radius: 4px;
+      transition: background 0.15s;
+    }
+
+    .status-card-value::-webkit-scrollbar {
+      display: none;
+    }
+
+    .status-card-value:hover {
+      background: rgba(24, 32, 40, 0.06);
+    }
+
+    .status-card-value.copied {
+      background: rgba(11, 122, 86, 0.15);
+    }
+
     .tool-grid {
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     }
@@ -264,7 +288,7 @@
 
     .task-row {
       display: flex;
-      align-items: flex-start;
+      align-items: center;
       justify-content: space-between;
       gap: 10px;
     }
@@ -287,11 +311,66 @@
       margin-top: 6px;
     }
 
+    .task-log-body {
+      margin-top: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .task-log-error {
+      color: var(--danger);
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      line-height: 1.5;
+      background: rgba(163, 53, 42, 0.07);
+      border-left: 3px solid var(--danger);
+      padding: 4px 8px;
+      border-radius: 4px;
+      word-break: break-all;
+    }
+
+    .task-log-lines {
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      color: var(--muted);
+      line-height: 1.5;
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      max-height: 260px;
+      overflow-y: auto;
+      padding: 4px 6px;
+      background: rgba(24,32,40,0.04);
+      border-radius: 4px;
+    }
+
+    .task-log-line {
+      word-break: break-all;
+    }
+
     .task-actions {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
+      align-items: center;
       justify-content: flex-end;
+    }
+
+    .task-log-toggle {
+      margin-top: 4px;
+    }
+
+    .task-log-toggle > summary {
+      cursor: pointer;
+      font-size: 0.85rem;
+      color: var(--muted);
+      list-style: none;
+      user-select: none;
+    }
+
+    .task-log-toggle > summary::-webkit-details-marker {
+      display: none;
     }
 
     .task-actions button {
@@ -340,6 +419,368 @@
         justify-content: flex-start;
       }
     }
+
+    /* ── Library sidebar ── */
+    .lib-toolbar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .lib-toolbar button {
+      width: auto;
+      padding: 8px 12px;
+      font-size: 0.88rem;
+    }
+
+    #libraryBatchSummary {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-left: auto;
+    }
+
+    .lib-tree {
+      overflow-y: auto;
+      max-height: 360px;
+    }
+
+    .lib-node {}
+
+    .lib-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 8px;
+      border-radius: 8px;
+      cursor: default;
+      user-select: none;
+    }
+
+    .lib-row.is-checked {
+      background: rgba(188, 95, 4, 0.12);
+    }
+
+    .lib-row.is-focused {
+      background: rgba(24, 32, 40, 0.07);
+    }
+
+    .lib-row:hover {
+      background: rgba(24, 32, 40, 0.05);
+    }
+
+    .lib-check-label {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+    }
+
+    .lib-checkbox {
+      width: auto;
+      margin: 0;
+    }
+
+    .lib-toggle-btn {
+      width: 22px;
+      min-width: 22px;
+      padding: 0;
+      font-size: 0.75rem;
+      background: none;
+      color: var(--muted);
+      border: none;
+      box-shadow: none;
+    }
+
+    .lib-toggle-btn:hover {
+      filter: none;
+      transform: none;
+      background: rgba(24, 32, 40, 0.1);
+    }
+
+    .lib-toggle-spacer {
+      display: inline-block;
+      width: 22px;
+      min-width: 22px;
+    }
+
+    .lib-icon {
+      font-size: 1rem;
+      min-width: 20px;
+    }
+
+    .lib-name {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .lib-meta {
+      font-size: 0.82rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .lib-row-actions {
+      display: flex;
+      gap: 4px;
+      opacity: 0;
+      transition: opacity 100ms;
+    }
+
+    .lib-row:hover .lib-row-actions {
+      opacity: 1;
+    }
+
+    .lib-act-btn {
+      width: auto;
+      padding: 4px 8px;
+      font-size: 0.8rem;
+    }
+
+    .lib-children.is-collapsed {
+      display: none;
+    }
+
+    /* ── Progress bar ── */
+    .task-progress {
+      margin-top: 8px;
+    }
+
+    .progress-track {
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(24, 32, 40, 0.1);
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #c5650c, #e88a2e);
+      transition: width 0.35s ease;
+    }
+
+    .progress-fill.is-done {
+      background: linear-gradient(90deg, #0b7a56, #1ab87c);
+    }
+
+    .queue-item.is-completed,
+    .playlist-child-item.is-completed {
+      background: linear-gradient(135deg, rgba(11, 122, 86, 0.08), rgba(26, 184, 124, 0.13));
+      border-color: rgba(26, 184, 124, 0.28);
+    }
+
+    .progress-fill.is-failed {
+      background: linear-gradient(90deg, #a3352a, #d94f41);
+    }
+
+    .progress-label {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 3px;
+      font-family: var(--mono);
+    }
+
+    /* ── Playlist parent card ── */
+    .playlist-parent {
+      background: rgba(188, 95, 4, 0.06);
+      border-radius: 14px;
+      padding: 14px;
+      border: 1px solid rgba(188, 95, 4, 0.18);
+    }
+
+    .playlist-toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      user-select: none;
+      margin-top: 8px;
+    }
+
+    .playlist-toggle-btn {
+      width: auto;
+      min-width: 26px;
+      padding: 2px 6px;
+      font-size: 0.75rem;
+      background: none;
+      color: var(--muted);
+      border: 1px solid var(--line);
+      box-shadow: none;
+    }
+
+    .playlist-toggle-btn:hover {
+      filter: none;
+      transform: none;
+      background: rgba(24, 32, 40, 0.07);
+    }
+
+    .playlist-children {
+      margin-top: 8px;
+      padding-left: 14px;
+      border-left: 2px solid rgba(188, 95, 4, 0.2);
+    }
+
+    .playlist-children.is-hidden {
+      display: none;
+    }
+
+    .playlist-child-item {
+      padding: 10px 0;
+      border-bottom: 1px dashed rgba(24, 32, 40, 0.08);
+    }
+
+    .playlist-child-item:last-child {
+      border-bottom: none;
+    }
+
+    .lib-dialog {
+      width: min(440px, 96vw);
+      padding: 0;
+      border-radius: var(--radius);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+    }
+
+    .lib-dialog::backdrop {
+      background: rgba(0, 0, 0, 0.3);
+    }
+
+    .lib-dialog-head {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--line);
+      font-weight: 600;
+    }
+
+    .lib-dialog-tree {
+      padding: 10px;
+      max-height: 320px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .lib-dir-btn {
+      width: 100%;
+      text-align: left;
+      background: none;
+      border: none;
+      box-shadow: none;
+      padding: 7px 10px;
+      border-radius: 8px;
+      font-size: 0.92rem;
+      color: var(--ink);
+    }
+
+    .lib-dir-btn:hover {
+      background: rgba(24, 32, 40, 0.07);
+      filter: none;
+      transform: none;
+    }
+
+    .lib-dir-btn.is-selected {
+      background: rgba(188, 95, 4, 0.14);
+      font-weight: 600;
+    }
+
+    .lib-dialog-foot {
+      padding: 12px 20px;
+      border-top: 1px solid var(--line);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    .lib-dialog-foot button {
+      width: auto;
+      padding: 10px 16px;
+    }
+
+    /* ── Subtitle selection ── */
+    .subtitle-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      max-height: 140px;
+      overflow-y: auto;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: rgba(255,255,255,0.7);
+    }
+
+    .subtitle-option-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      border-radius: 8px;
+      background: rgba(24,32,40,0.05);
+      font-size: 0.88rem;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .subtitle-option-item input[type="checkbox"] {
+      width: auto;
+      padding: 0;
+      margin: 0;
+      border: none;
+      background: none;
+    }
+
+    .subtitle-option-item.is-auto {
+      color: var(--muted);
+    }
+
+    .subtitle-option-item.is-checked {
+      background: rgba(188, 95, 4, 0.12);
+      color: #8f4805;
+    }
+
+    .tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      min-height: 26px;
+      align-items: center;
+    }
+
+    .lang-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      padding: 3px 6px 3px 10px;
+      border-radius: 999px;
+      background: rgba(188, 95, 4, 0.12);
+      color: #8f4805;
+      font-size: 0.82rem;
+    }
+
+    .lang-tag-remove {
+      cursor: pointer;
+      background: none;
+      border: none;
+      padding: 0;
+      width: auto;
+      box-shadow: none;
+      color: inherit;
+      font-size: 1rem;
+      line-height: 1;
+      opacity: 0.6;
+    }
+
+    .lang-tag-remove:hover {
+      filter: none;
+      transform: none;
+      opacity: 1;
+      color: var(--danger);
+    }
+
   </style>
 </head>
 <body>
@@ -347,7 +788,6 @@
     <header class="topbar">
       <div class="brand">
         <h1>YoutuDlp Bridge</h1>
-        <p>当前页面已经接入 M2：支持 URL 解析、重复检测、单视频入队、基础调度，以及 Stop、继续下载、Restart 的控制链路。</p>
       </div>
       <div class="badge"><span class="dot"></span><span id="bridgeStatus">正在连接 Bridge...</span></div>
     </header>
@@ -373,19 +813,43 @@
         </div>
         <div>
           <label for="quality">清晰度</label>
-          <input id="quality" type="text" value="720p" />
+          <select id="quality">
+            <option value="best">最优</option>
+            <option value="2160p">2160p</option>
+            <option value="1440p">1440p</option>
+            <option value="1080p" selected>1080p</option>
+            <option value="720p">720p</option>
+            <option value="480p">480p</option>
+            <option value="360p">360p</option>
+            <option value="worst">最低</option>
+          </select>
         </div>
         <div>
           <label for="container">封装格式</label>
-          <input id="container" type="text" value="mp4" />
+          <select id="container">
+            <option value="mp4" selected>mp4</option>
+            <option value="mkv">mkv</option>
+            <option value="webm">webm</option>
+            <option value="m4a">m4a</option>
+            <option value="mp3">mp3</option>
+            <option value="opus">opus</option>
+          </select>
         </div>
         <div>
           <label for="targetSubdir">目标子目录</label>
-          <input id="targetSubdir" type="text" placeholder="可留空，表示根目录" />
+          <select id="targetSubdir">
+            <option value="">根目录</option>
+          </select>
         </div>
         <div>
           <label>&nbsp;</label>
           <button id="queueBtn" type="button" disabled>加入队列</button>
+        </div>
+      </div>
+      <div id="subtitleSection" style="margin-top: 14px; display: none;">
+        <label>字幕下载语言</label>
+        <div id="subtitleOptions" class="subtitle-options">
+          <span class="muted" style="font-size:0.88rem;">解析 URL 后可在此选择字幕语言</span>
         </div>
       </div>
       <div id="parseResult" class="parse-result">先粘贴 URL 并点击“解析 URL”。如果命中重复，会在这里直接显示去重结果。</div>
@@ -403,16 +867,53 @@
 
         <section class="panel workspace-panel">
           <div class="section-head">
+            <h2>下载库</h2>
+            <span class="muted" id="librarySummary">读取中...</span>
+            <button id="refreshLibraryBtn" type="button" class="secondary" style="width:auto;padding:6px 12px;font-size:0.85rem;">刷新</button>
+          </div>
+          <div id="libraryRootBar" style="display:flex;align-items:center;gap:8px;margin-bottom:10px;min-width:0;">
+            <span class="mono" id="libraryRootPath" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:0.85rem;color:var(--muted);">读取中...</span>
+            <button id="openLibraryRootBtn" type="button" class="secondary" style="width:auto;flex-shrink:0;padding:5px 10px;font-size:0.82rem;">打开目录</button>
+          </div>
+          <div class="lib-toolbar">
+            <button id="createLibraryFolderBtn" type="button" class="secondary" disabled>新建文件夹</button>
+            <button id="renameLibraryBtn" type="button" class="secondary" disabled>重命名</button>
+            <button id="moveSelectedLibraryBtn" type="button" class="secondary" disabled>移动</button>
+            <button id="deleteSelectedLibraryBtn" type="button" class="secondary" disabled>删除</button>
+            <span id="libraryBatchSummary"></span>
+          </div>
+          <div id="libraryTree" class="lib-tree"></div>
+          <div class="footer-note" id="libraryMessage"></div>
+          <dialog id="moveFolderDialog" class="lib-dialog">
+            <div class="lib-dialog-head">选择目标目录</div>
+            <div id="moveFolderTree" class="lib-dialog-tree"></div>
+            <div class="lib-dialog-foot">
+              <button id="moveFolderCancelBtn" type="button" class="secondary">取消</button>
+              <button id="moveFolderConfirmBtn" type="button">移动到这里</button>
+            </div>
+          </dialog>
+        </section>
+
+        <section class="panel workspace-panel">
+          <div class="section-head">
             <h2>服务状态</h2>
             <span class="muted" id="startedAt">读取中...</span>
           </div>
           <div class="status-grid" id="statusGrid"></div>
+          <details style="margin-top: 16px;">
+            <summary style="cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:16px;">
+              <strong>工具发现</strong>
+              <span class="pill" id="toolSummary">读取中</span>
+            </summary>
+            <div class="muted" id="toolSummaryText" style="margin-top:8px;">正在检查 sidecar 工具状态。</div>
+            <div class="tool-grid" id="toolGrid" style="margin-top: 14px;"></div>
+          </details>
         </section>
 
         <section class="panel workspace-panel">
           <div class="section-head">
             <h2>全局设置</h2>
-            <button id="saveSettings" type="button">保存设置</button>
+            <button id="saveSettings" type="button" style="width:auto;flex-shrink:0;white-space:nowrap;">保存设置</button>
           </div>
           <div class="settings-grid">
             <div>
@@ -424,8 +925,18 @@
               <input id="maxConcurrentDownloads" type="number" min="1" max="8" />
             </div>
             <div>
+              <label for="playlistResolveConcurrency">播放列表解析并发数</label>
+              <input id="playlistResolveConcurrency" type="number" min="1" max="16" />
+            </div>
+            <div>
+              <label for="playlistResolveIntervalMs">播放列表解析间隔 (ms)</label>
+              <input id="playlistResolveIntervalMs" type="number" min="0" max="10000" step="50" />
+            </div>
+            <div>
               <label for="defaultTargetSubdir">默认目标子目录</label>
-              <input id="defaultTargetSubdir" type="text" placeholder="可留空" />
+              <select id="defaultTargetSubdir">
+                <option value="">根目录</option>
+              </select>
             </div>
             <div>
               <label for="defaultDownloadMode">默认下载类型</label>
@@ -436,11 +947,27 @@
             </div>
             <div>
               <label for="defaultContainer">默认封装格式</label>
-              <input id="defaultContainer" type="text" />
+              <select id="defaultContainer">
+                <option value="mp4">mp4</option>
+                <option value="mkv">mkv</option>
+                <option value="webm">webm</option>
+                <option value="m4a">m4a</option>
+                <option value="mp3">mp3</option>
+                <option value="opus">opus</option>
+              </select>
             </div>
             <div>
               <label for="defaultQuality">默认清晰度</label>
-              <input id="defaultQuality" type="text" />
+              <select id="defaultQuality">
+                <option value="best">最优</option>
+                <option value="2160p">2160p</option>
+                <option value="1440p">1440p</option>
+                <option value="1080p">1080p</option>
+                <option value="720p">720p</option>
+                <option value="480p">480p</option>
+                <option value="360p">360p</option>
+                <option value="worst">最低</option>
+              </select>
             </div>
           </div>
           <div class="settings-grid" style="margin-top: 16px;">
@@ -451,6 +978,12 @@
               <label><input id="showAdvancedByDefault" type="checkbox" style="width:auto; margin-right: 8px;" />默认展开高级模式</label>
             </div>
             <div class="card">
+              <strong>任务队列显示</strong>
+              <label><input id="clearCompletedOnStartup" type="checkbox" style="width:auto; margin-right: 8px;" />启动时自动清除已完成任务</label>
+              <label for="queuePageSize" style="margin-top: 10px;">每页显示条数</label>
+              <input id="queuePageSize" type="number" min="1" max="100" value="5" />
+            </div>
+            <div class="card">
               <strong>工具覆盖路径</strong>
               <label for="ytDlpPath">yt-dlp</label>
               <input id="ytDlpPath" type="text" placeholder="可留空，默认同目录发现" />
@@ -459,28 +992,25 @@
               <label for="ffprobePath" style="margin-top: 10px;">ffprobe</label>
               <input id="ffprobePath" type="text" placeholder="可留空" />
             </div>
+            <div class="card">
+              <strong>默认字幕语言</strong>
+              <div id="defaultSubtitleTagList" class="tag-list" style="margin-top: 8px;"></div>
+              <div style="display:flex;gap:8px;margin-top:8px;">
+                <input id="defaultSubtitleInput" type="text" placeholder="输入语言代码，例如 en" style="flex:1;" />
+                <button type="button" class="secondary" id="defaultSubtitleAddBtn" style="width:auto;padding:8px 12px;font-size:0.88rem;">添加</button>
+              </div>
+              <div class="muted" style="margin-top:6px;font-size:0.82rem;">例如 en · zh-Hans · zh-TW，留空不默认下载字幕。</div>
+            </div>
+            <div class="card" style="grid-column: 1 / -1;">
+              <strong>全局 Cookie</strong>
+              <div class="muted" style="margin-top:6px;margin-bottom:8px;font-size:0.82rem;">粘贴 Netscape/cookies.txt 格式的 Cookie 内容，yt-dlp 下载时会自动使用。留空则不使用 Cookie。</div>
+              <textarea id="globalCookieContent" rows="6" style="font-family:var(--mono);font-size:0.82rem;resize:vertical;" placeholder="# Netscape HTTP Cookie File&#10;.youtube.com	TRUE	/	TRUE	0	SAPISID	xxxx"></textarea>
+              <div id="globalCookieStatus" class="muted" style="margin-top:6px;font-size:0.82rem;"></div>
+            </div>
           </div>
           <div class="footer-note" id="settingsMessage">保存后会即时刷新 Bridge 的工具发现结果。</div>
         </section>
       </div>
-
-      <aside class="panel sidebar-panel">
-        <div class="section-head">
-          <h3>下载库与工具</h3>
-          <span class="pill">M2/M3</span>
-        </div>
-        <div class="tree-item">
-          <div class="muted">当前先用队列和输出文件列表验证下载主链路。树状下载库和当前选择区会在后续阶段接入。</div>
-        </div>
-        <div class="tree-item">
-          <div class="section-head" style="margin-bottom: 8px;">
-            <strong>工具发现</strong>
-            <span class="pill" id="toolSummary">读取中</span>
-          </div>
-          <div class="muted" id="toolSummaryText">正在检查 sidecar 工具状态。</div>
-        </div>
-        <div class="tool-grid" id="toolGrid" style="margin-top: 14px;"></div>
-      </aside>
     </div>
   </div>
 
@@ -497,6 +1027,27 @@
     const queueSummary = document.getElementById('queueSummary');
     const parseBtn = document.getElementById('parseBtn');
     const queueBtn = document.getElementById('queueBtn');
+    const libraryTree = document.getElementById('libraryTree');
+    const librarySummary = document.getElementById('librarySummary');
+    const libraryMessage = document.getElementById('libraryMessage');
+    const libraryBatchSummary = document.getElementById('libraryBatchSummary');
+    const refreshLibraryBtn = document.getElementById('refreshLibraryBtn');
+    const createLibraryFolderBtn = document.getElementById('createLibraryFolderBtn');
+    const renameLibraryBtn = document.getElementById('renameLibraryBtn');
+    const moveSelectedLibraryBtn = document.getElementById('moveSelectedLibraryBtn');
+    const deleteSelectedLibraryBtn = document.getElementById('deleteSelectedLibraryBtn');
+    const moveFolderDialog = document.getElementById('moveFolderDialog');
+    const moveFolderTree = document.getElementById('moveFolderTree');
+    const moveFolderCancelBtn = document.getElementById('moveFolderCancelBtn');
+    const moveFolderConfirmBtn = document.getElementById('moveFolderConfirmBtn');
+    const subtitleSection = document.getElementById('subtitleSection');
+    const subtitleOptions = document.getElementById('subtitleOptions');
+    const defaultSubtitleTagList = document.getElementById('defaultSubtitleTagList');
+    const defaultSubtitleInput = document.getElementById('defaultSubtitleInput');
+    const defaultSubtitleAddBtn = document.getElementById('defaultSubtitleAddBtn');
+    const globalCookieContent = document.getElementById('globalCookieContent');
+    const globalCookieStatus = document.getElementById('globalCookieStatus');
+
 
     const formFields = {
       url: document.getElementById('url'),
@@ -509,6 +1060,8 @@
     const settingsFields = {
       downloadRoot: document.getElementById('downloadRoot'),
       maxConcurrentDownloads: document.getElementById('maxConcurrentDownloads'),
+      playlistResolveConcurrency: document.getElementById('playlistResolveConcurrency'),
+      playlistResolveIntervalMs: document.getElementById('playlistResolveIntervalMs'),
       defaultTargetSubdir: document.getElementById('defaultTargetSubdir'),
       defaultDownloadMode: document.getElementById('defaultDownloadMode'),
       defaultContainer: document.getElementById('defaultContainer'),
@@ -518,16 +1071,36 @@
       showAdvancedByDefault: document.getElementById('showAdvancedByDefault'),
       ytDlpPath: document.getElementById('ytDlpPath'),
       ffmpegPath: document.getElementById('ffmpegPath'),
-      ffprobePath: document.getElementById('ffprobePath')
+      ffprobePath: document.getElementById('ffprobePath'),
+      clearCompletedOnStartup: document.getElementById('clearCompletedOnStartup'),
+      queuePageSize: document.getElementById('queuePageSize')
     };
+
+    let currentDefaultCookieFileName = null;
 
     let currentStatus = null;
     let lastResolved = null;
-    let pollHandle = null;
+    let taskCache = [];
+    let queueExpandedCount = 0;
+    let playlistExpandedIds = new Set();
+    let libraryBusy = false;
+    let selectedSubtitleLanguages = [];
+    let defaultSubtitleLanguages = [];
+    let currentLibrary = null;
+    let libraryIndex = new Map();
+    let selectedLibraryPaths = new Set();
+    let expandedFolders = new Set();
+    let moveDialogSelectedPath = '';
+
 
     async function initialize() {
-      await Promise.all([loadStatus(), loadSettings(), loadTasks()]);
-      startPolling();
+      queueExpandedCount = 0;
+      await Promise.all([loadStatus(), loadSettings(), loadLibraryTree()]);
+      await loadTasks();
+      if (getUiSetting('clearCompletedOnStartup', false)) {
+        await clearCompletedTasks();
+      }
+      startSSE();
     }
 
     async function loadStatus() {
@@ -552,6 +1125,8 @@
       const settings = await response.json();
       settingsFields.downloadRoot.value = settings.downloadRoot || '';
       settingsFields.maxConcurrentDownloads.value = settings.maxConcurrentDownloads || 3;
+      settingsFields.playlistResolveConcurrency.value = settings.playlistResolveConcurrency ?? 3;
+      settingsFields.playlistResolveIntervalMs.value = settings.playlistResolveIntervalMs ?? 300;
       settingsFields.defaultTargetSubdir.value = settings.defaultTargetSubdir || '';
       settingsFields.defaultDownloadMode.value = settings.defaultDownloadMode || 'video';
       settingsFields.defaultContainer.value = settings.defaultContainer || 'mp4';
@@ -563,10 +1138,27 @@
       settingsFields.ffmpegPath.value = settings.toolOverrides?.ffmpegPath || '';
       settingsFields.ffprobePath.value = settings.toolOverrides?.ffprobePath || '';
 
+      currentDefaultCookieFileName = settings.defaultCookieFileName || null;
+      if (currentDefaultCookieFileName) {
+        globalCookieStatus.textContent = `当前已配置 Cookie 文件：${currentDefaultCookieFileName}。如需更新请重新粘贴内容后保存，留空则清除。`;
+      } else {
+        globalCookieStatus.textContent = '';
+      }
+      // Don't prefill the textarea — cookie content may be sensitive
+
+      // UI-only settings (localStorage)
+      settingsFields.clearCompletedOnStartup.checked = getUiSetting('clearCompletedOnStartup', false);
+      settingsFields.queuePageSize.value = getUiSetting('queuePageSize', 5);
+
       formFields.downloadMode.value = settings.defaultDownloadMode || 'video';
       formFields.quality.value = settings.defaultQuality || '1080p';
       formFields.container.value = settings.defaultContainer || 'mp4';
       formFields.targetSubdir.value = settings.defaultTargetSubdir || '';
+
+      defaultSubtitleLanguages = Array.isArray(settings.defaultSubtitleLanguages)
+        ? settings.defaultSubtitleLanguages.filter(Boolean)
+        : [];
+      renderDefaultSubtitleTags();
     }
 
     async function loadTasks() {
@@ -576,7 +1168,8 @@
       }
 
       const payload = await response.json();
-      renderTasks(payload.tasks || []);
+      taskCache = payload.tasks || [];
+      renderTasks(taskCache);
     }
 
     async function parseCurrentUrl() {
@@ -601,10 +1194,12 @@
         }
 
         lastResolved = payload;
-        queueBtn.disabled = Boolean(payload.resolved?.isPlaylist);
+        queueBtn.disabled = false;
         renderResolve(payload);
       } catch (error) {
         lastResolved = null;
+        selectedSubtitleLanguages = [];
+        renderSubtitleOptions([]);
         queueBtn.disabled = true;
         parseResult.textContent = `解析失败: ${String(error.message || error)}`;
       } finally {
@@ -618,34 +1213,43 @@
         return;
       }
 
-      if (lastResolved.resolved.isPlaylist) {
-        parseResult.textContent = 'M2 当前只支持单视频入队，播放列表会在后续阶段接入。';
-        return;
-      }
-
       queueBtn.disabled = true;
 
       try {
-        const body = {
+        const isPlaylist = Boolean(lastResolved.resolved.isPlaylist);
+        // For playlists, automatically nest inside a subfolder named after the playlist.
+        const baseSubdir = formFields.targetSubdir.value.trim();
+        let targetSubdir = baseSubdir;
+        if (isPlaylist && lastResolved.resolved.playlistTitle) {
+          const safe = lastResolved.resolved.playlistTitle.replace(/[\\/:\*?"<>|]/g, '_').trim();
+          targetSubdir = baseSubdir ? `${baseSubdir}/${safe}` : safe;
+        }
+        const baseBody = {
           sourceUrl: lastResolved.resolved.sourceUrl,
-          targetSubdir: formFields.targetSubdir.value.trim(),
+          targetSubdir,
           downloadMode: formFields.downloadMode.value,
           quality: formFields.quality.value.trim(),
           container: formFields.container.value.trim(),
+          subtitleLanguages: selectedSubtitleLanguages.slice(),
           resolved: lastResolved.resolved
         };
 
-        const response = await fetch('/api/tasks', {
+        const endpoint = isPlaylist ? '/api/tasks/batch' : '/api/tasks';
+        const response = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body)
+          body: JSON.stringify(baseBody)
         });
         const payload = await response.json();
         if (!response.ok) {
           throw new Error(payload?.error?.message || '入队失败');
         }
 
-        parseResult.textContent = `已加入队列: ${payload.title}`;
+        if (isPlaylist) {
+          parseResult.textContent = `播放列表已入队: 共 ${payload.createdCount} 个子任务`;
+        } else {
+          parseResult.textContent = `已加入队列: ${payload.title}`;
+        }
         await loadTasks();
       } catch (error) {
         parseResult.textContent = `入队失败: ${String(error.message || error)}`;
@@ -656,10 +1260,13 @@
 
     async function invokeTaskAction(taskId, action) {
       try {
-        const response = await fetch(`/api/tasks/${encodeURIComponent(taskId)}/${action}`, {
-          method: 'POST'
-        });
-        const payload = await response.json();
+        let response;
+        if (action === 'delete') {
+          response = await fetch(`/api/tasks/${encodeURIComponent(taskId)}`, { method: 'DELETE' });
+        } else {
+          response = await fetch(`/api/tasks/${encodeURIComponent(taskId)}/${action}`, { method: 'POST' });
+        }
+        const payload = response.status !== 204 ? await response.json() : null;
         if (!response.ok) {
           throw new Error(payload?.error?.message || '任务操作失败');
         }
@@ -673,11 +1280,42 @@
     async function saveSettings() {
       settingsMessage.textContent = '正在保存设置...';
 
+      // Save UI-only settings to localStorage
+      setUiSetting('clearCompletedOnStartup', settingsFields.clearCompletedOnStartup.checked);
+      setUiSetting('queuePageSize', Number(settingsFields.queuePageSize.value) || 5);
+
       try {
+        // Handle cookie content: import if provided, clear if explicitly emptied
+        const cookieText = globalCookieContent.value.trim();
+        let resolvedCookieFileName = currentDefaultCookieFileName;
+        if (cookieText) {
+          const cookieResp = await fetch('/api/cookies/import', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fileName: 'global_default.txt', content: cookieText })
+          });
+          const cookiePayload = await cookieResp.json();
+          if (!cookieResp.ok) {
+            throw new Error(cookiePayload?.error?.message || 'Cookie 导入失败');
+          }
+          resolvedCookieFileName = cookiePayload.cookieFileName;
+          globalCookieContent.value = '';
+        } else if (globalCookieContent.value === '' && currentDefaultCookieFileName) {
+          // User left textarea blank — treat as intentional clear only if they
+          // never typed anything (value is '' on load too, so we check the
+          // focused-and-cleared pattern via an explicit "clear" intent flag set below)
+          // For simplicity: blank textarea on save means "keep existing" unless
+          // clearCookieIntent flag is set by the clear button.
+          // resolvedCookieFileName stays as currentDefaultCookieFileName
+        }
+
+        const settings = collectSettings();
+        settings.defaultCookieFileName = resolvedCookieFileName || null;
+
         const response = await fetch('/api/settings', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(collectSettings())
+          body: JSON.stringify(settings)
         });
 
         const payload = await response.json();
@@ -697,16 +1335,28 @@
         { title: '监听地址', value: status.baseUrl },
         { title: '程序目录', value: status.executableDir },
         { title: '状态目录', value: status.stateDir },
-        { title: '队列文件', value: status.queuePath },
-        { title: '下载根目录', value: status.downloadRoot }
+        { title: '队列文件', value: status.queuePath }
       ];
 
+      const rootPath = document.getElementById('libraryRootPath');
+      if (rootPath) rootPath.textContent = status.downloadRoot || '（未设置）';
+
       statusGrid.innerHTML = cards.map(card => `
-        <div class="card">
+        <div class="card" style="min-width:0;overflow:hidden;">
           <strong>${escapeHtml(card.title)}</strong>
-          <div class="mono">${escapeHtml(String(card.value ?? ''))}</div>
+          <div class="mono status-card-value" data-copy-value="${escapeHtml(String(card.value ?? ''))}">${escapeHtml(String(card.value ?? ''))}</div>
         </div>
       `).join('');
+
+      statusGrid.querySelectorAll('.status-card-value').forEach(el => {
+        el.addEventListener('click', () => {
+          const val = el.getAttribute('data-copy-value') || '';
+          navigator.clipboard.writeText(val).then(() => {
+            el.classList.add('copied');
+            setTimeout(() => el.classList.remove('copied'), 1200);
+          });
+        });
+      });
     }
 
     function renderTools(tools) {
@@ -736,7 +1386,7 @@
         ? `命中重复 ${duplicate.matches.length} 条，默认动作是 Skip。`
         : '未命中重复。';
       const playlistText = resolved.isPlaylist
-        ? `当前识别为播放列表，共 ${resolved.playlistCount || '?'} 项。M2 暂不支持播放列表入队。`
+        ? `当前识别为播放列表，共 ${resolved.entries?.length || resolved.playlistCount || '?'} 项，可直接加入队列。`
         : '当前识别为单视频任务，可直接加入队列。';
 
       parseResult.innerHTML = `
@@ -745,43 +1395,176 @@
         ${escapeHtml(playlistText)}<br />
         ${escapeHtml(duplicateText)}
       `;
+
+      if (Array.isArray(resolved.availableQualities) && resolved.availableQualities.length) {
+        const qualitySel = formFields.quality;
+        const current = qualitySel.value;
+        qualitySel.innerHTML = resolved.availableQualities.map(q =>
+          `<option value="${escapeHtml(q)}">${escapeHtml(q)}</option>`
+        ).join('');
+        qualitySel.value = resolved.availableQualities.includes(current) ? current : resolved.availableQualities[0];
+      }
+
+      renderSubtitleOptions(resolved.availableSubtitles || []);
+    }
+
+    // Build a map of taskId -> task for child lookups
+    function buildTaskMap(tasks) {
+      const map = new Map();
+      for (const t of tasks) map.set(t.id, t);
+      return map;
+    }
+
+    function renderProgressBar(task) {
+      const pct = (task.progress && typeof task.progress.percent === 'number')
+        ? Math.min(100, Math.max(0, task.progress.percent))
+        : 0;
+      const isDone = task.state === 'completed';
+      const isFailed = task.state === 'failed';
+      const fillClass = isDone ? 'progress-fill is-done' : isFailed ? 'progress-fill is-failed' : 'progress-fill';
+      let label = `${pct.toFixed(1)}%`;
+      if (task.progress) {
+        if (task.progress.speedBytesPerSec) label += `  ${formatBytes(task.progress.speedBytesPerSec)}/s`;
+        if (task.progress.etaSeconds != null) label += `  ETA ${formatDuration(task.progress.etaSeconds)}`;
+      }
+      return `<div class="task-progress">
+        <div class="progress-track"><div class="${fillClass}" style="width:${pct}%"></div></div>
+        <div class="progress-label">${escapeHtml(label)}</div>
+      </div>`;
+    }
+
+    function renderSingleTaskCard(task, isChild = false) {
+      const stateClass = task.state === 'completed' ? 'ok' : task.state === 'failed' ? 'fail' : '';
+      const meta = [
+        `模式: ${task.downloadMode}`,
+        `质量: ${task.quality}`,
+        task.container ? `封装: ${task.container}` : null,
+        task.targetSubdir ? `目录: ${task.targetSubdir}` : '目录: 根目录',
+        task.playlistIndex != null ? `#${task.playlistIndex}` : null
+      ].filter(Boolean).join(' · ');
+
+      const logBodyHtml = (() => {
+        const parts = [];
+        if (task.lastError) {
+          parts.push(`<div class="task-log-error">${escapeHtml(task.lastError)}</div>`);
+        }
+        const logs = Array.isArray(task.recentLogs) ? task.recentLogs : [];
+        if (logs.length) {
+          const lines = logs.map(l => `<div class="task-log-line">${escapeHtml(l)}</div>`).join('');
+          parts.push(`<div class="task-log-lines">${lines}</div>`);
+        }
+        return parts.join('');
+      })();
+
+      const wrapClass = isChild ? 'playlist-child-item' : 'queue-item';
+      const completedClass = task.state === 'completed' ? ' is-completed' : '';
+      return `
+        <div class="${wrapClass}${completedClass}">
+          <div class="task-row">
+            <div class="task-main">
+              <div class="task-name">${escapeHtml(task.title)}</div>
+              <div class="task-meta">${escapeHtml(meta)}</div>
+              ${task.state !== 'completed' ? renderProgressBar(task) : ''}
+              ${logBodyHtml ? `<details class="task-log-toggle" data-log-task-id="${escapeHtml(task.id)}"><summary>日志</summary><div class="task-log-body">${logBodyHtml}</div></details>` : ''}
+            </div>
+            <div class="task-actions">
+              <span class="pill ${stateClass}">${stateLabel(task.state)}</span>
+              ${renderTaskButtons(task)}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderPlaylistParentCard(parent, taskMap) {
+      const stateClass = parent.state === 'completed' ? 'ok' : parent.state === 'failed' ? 'fail' : '';
+      const children = (parent.childTaskIds || []).map(id => taskMap.get(id)).filter(Boolean);
+      const total = children.length;
+      const completed = children.filter(c => c.state === 'completed').length;
+      const isExpanded = playlistExpandedIds.has(parent.id);
+
+      const meta = [
+        `播放列表`,
+        `${completed}/${total} 已完成`,
+        `模式: ${parent.downloadMode}`,
+        parent.targetSubdir ? `目录: ${parent.targetSubdir}` : '目录: 根目录'
+      ].join(' · ');
+
+      const childrenHtml = children.map(child => renderSingleTaskCard(child, true)).join('');
+
+      return `
+        <div class="queue-item">
+          <div class="playlist-parent">
+            <div class="task-row">
+              <div class="task-main">
+                <div class="task-name">🎬 ${escapeHtml(parent.title)}</div>
+                <div class="task-meta">${escapeHtml(meta)}</div>
+                ${renderProgressBar(parent)}
+                ${parent.lastError ? `<div class="task-log-error">${escapeHtml(parent.lastError)}</div>` : ''}
+              </div>
+              <div class="task-actions">
+                <span class="pill ${stateClass}">${stateLabel(parent.state)}</span>
+                ${renderTaskButtons(parent)}
+              </div>
+            </div>
+            <div class="playlist-toggle-row">
+              <button type="button" class="playlist-toggle-btn secondary" data-playlist-toggle="${escapeHtml(parent.id)}">${isExpanded ? '▼' : '▶'}</button>
+              <span class="muted" style="font-size:0.85rem;">${total} 个子任务${isExpanded ? ' (点击折叠)' : ' (点击展开)'}</span>
+            </div>
+            <div class="playlist-children ${isExpanded ? '' : 'is-hidden'}" data-playlist-children="${escapeHtml(parent.id)}">
+              ${childrenHtml}
+            </div>
+          </div>
+        </div>
+      `;
     }
 
     function renderTasks(tasks) {
-      queueSummary.textContent = `${tasks.length} 项任务`;
+      const pageSize = getUiSetting('queuePageSize', 5);
+      const taskMap = buildTaskMap(tasks);
 
-      if (!tasks.length) {
-        queueList.innerHTML = '<div class="empty">队列为空。先解析一个单视频 URL，再把它加入队列。</div>';
+      // Top-level items: PlaylistParent or Single (not PlaylistItem — they render under parent)
+      const topLevel = tasks.filter(t => t.taskKind !== 'playlist_item');
+      const reversed = [...topLevel].reverse();
+      const limit = pageSize + queueExpandedCount;
+      const visible = reversed.slice(0, limit);
+      const remaining = reversed.length - visible.length;
+
+      queueSummary.textContent = `${topLevel.length} 项任务`;
+
+      if (!topLevel.length) {
+        queueList.innerHTML = '<div class="empty">队列为空。解析一个 URL 后把它加入队列。</div>';
         return;
       }
 
-      queueList.innerHTML = tasks.map(task => {
-        const stateClass = task.state === 'completed' ? 'ok' : task.state === 'failed' ? 'fail' : '';
-        const meta = [
-          `状态: ${task.state}`,
-          `模式: ${task.downloadMode}`,
-          `质量: ${task.quality}`,
-          task.container ? `封装: ${task.container}` : null,
-          task.targetSubdir ? `目录: ${task.targetSubdir}` : '目录: 根目录'
-        ].filter(Boolean).join(' · ');
-        const subline = task.lastError || latestLog(task) || `进度: ${formatProgress(task.progress)}`;
+      // Remember which log <details> panels are currently open so we can restore
+      // them after re-rendering (SSE updates would otherwise collapse them).
+      const openLogIds = new Set();
+      queueList.querySelectorAll('[data-log-task-id]').forEach(el => {
+        if (el.open) openLogIds.add(el.getAttribute('data-log-task-id'));
+      });
 
-        return `
-          <div class="queue-item">
-            <div class="task-row">
-              <div class="task-main">
-                <div class="task-name">${escapeHtml(task.title)}</div>
-                <div class="task-meta">${escapeHtml(meta)}</div>
-                <div class="task-subline">${escapeHtml(subline)}</div>
-              </div>
-              <div class="task-actions">
-                <span class="pill ${stateClass}">${escapeHtml(task.state)}</span>
-                ${renderTaskButtons(task)}
-              </div>
-            </div>
-          </div>
-        `;
+      const itemsHtml = visible.map(task => {
+        if (task.taskKind === 'playlist_parent') {
+          return renderPlaylistParentCard(task, taskMap);
+        }
+        return renderSingleTaskCard(task, false);
       }).join('');
+
+      const moreHtml = remaining > 0
+        ? `<div style="padding: 10px 0; text-align: center;">
+            <button type="button" class="secondary" id="queueLoadMoreBtn" style="width:auto;padding:8px 16px;">展开更多 ${Math.min(remaining, pageSize)} 项</button>
+           </div>`
+        : '';
+
+      queueList.innerHTML = itemsHtml + moreHtml;
+
+      // Restore open log panels.
+      if (openLogIds.size) {
+        queueList.querySelectorAll('[data-log-task-id]').forEach(el => {
+          if (openLogIds.has(el.getAttribute('data-log-task-id'))) el.open = true;
+        });
+      }
 
       queueList.querySelectorAll('[data-task-action]').forEach(button => {
         button.addEventListener('click', event => {
@@ -790,32 +1573,55 @@
           invokeTaskAction(taskId, action);
         });
       });
+
+      queueList.querySelectorAll('[data-playlist-toggle]').forEach(btn => {
+        btn.addEventListener('click', event => {
+          const parentId = event.currentTarget.getAttribute('data-playlist-toggle');
+          if (playlistExpandedIds.has(parentId)) {
+            playlistExpandedIds.delete(parentId);
+          } else {
+            playlistExpandedIds.add(parentId);
+          }
+          renderTasks(taskCache);
+        });
+      });
+
+      const loadMoreBtn = document.getElementById('queueLoadMoreBtn');
+      if (loadMoreBtn) {
+        loadMoreBtn.addEventListener('click', () => {
+          queueExpandedCount += pageSize;
+          renderTasks(taskCache);
+        });
+      }
     }
 
+    const STATE_LABELS = {
+      queued: '等待下载', submitted: '等待中', resolving: '解析中',
+      downloading: '下载中', stopping: '停止中', paused: '已暂停',
+      completed: '已完成', failed: '失败', canceled: '已取消'
+    };
+    function stateLabel(s) { return STATE_LABELS[s] || s; }
+
     function renderTaskButtons(task) {
+      const id = escapeHtml(task.id);
+      const btn  = (action, label, cls='') =>
+        `<button type="button" ${cls ? `class="${cls}" ` : ''}data-task-id="${id}" data-task-action="${action}">${label}</button>`;
+      const del = btn('delete', '删除', 'secondary');
+
       if (task.state === 'downloading') {
-        return `<button type="button" data-task-id="${escapeHtml(task.id)}" data-task-action="stop">Stop</button>`;
+        return btn('stop', '暂停') + del;
       }
-
       if (task.state === 'paused') {
-        return `
-          <button type="button" class="secondary" data-task-id="${escapeHtml(task.id)}" data-task-action="resume">继续下载</button>
-          <button type="button" data-task-id="${escapeHtml(task.id)}" data-task-action="restart">Restart</button>
-        `;
+        return btn('resume', '继续', 'secondary') + btn('restart', '重新下载', 'secondary') + del;
       }
-
       if (task.state === 'failed') {
-        return `
-          <button type="button" class="secondary" data-task-id="${escapeHtml(task.id)}" data-task-action="resume">Retry</button>
-          <button type="button" data-task-id="${escapeHtml(task.id)}" data-task-action="restart">Restart</button>
-        `;
+        return btn('resume', '重试', 'secondary') + btn('restart', '重新下载', 'secondary') + del;
       }
-
       if (task.state === 'completed') {
-        return `<button type="button" data-task-id="${escapeHtml(task.id)}" data-task-action="restart">Restart</button>`;
+        return btn('restart', '重新下载', 'secondary') + del;
       }
-
-      return '';
+      // queued / submitted / other
+      return del;
     }
 
     function collectResolveRequest() {
@@ -832,6 +1638,8 @@
       return {
         downloadRoot: settingsFields.downloadRoot.value.trim(),
         maxConcurrentDownloads: Number(settingsFields.maxConcurrentDownloads.value || 3),
+        playlistResolveConcurrency: Number(settingsFields.playlistResolveConcurrency.value || 3),
+        playlistResolveIntervalMs: Number(settingsFields.playlistResolveIntervalMs.value ?? 300),
         openBrowserOnFirstLaunch: settingsFields.openBrowserOnFirstLaunch.checked,
         openBrowserOnLaterLaunch: settingsFields.openBrowserOnLaterLaunch.checked,
         incompleteTaskRecovery: 'manual',
@@ -840,6 +1648,8 @@
         defaultDownloadMode: settingsFields.defaultDownloadMode.value,
         defaultContainer: settingsFields.defaultContainer.value.trim(),
         defaultQuality: settingsFields.defaultQuality.value.trim(),
+        defaultSubtitleLanguages: defaultSubtitleLanguages.slice(),
+        defaultCookieFileName: currentDefaultCookieFileName || null,
         toolOverrides: {
           ytDlpPath: emptyToNull(settingsFields.ytDlpPath.value),
           ffmpegPath: emptyToNull(settingsFields.ffmpegPath.value),
@@ -848,11 +1658,83 @@
       };
     }
 
+    function renderSubtitleOptions(subtitles) {
+      if (!subtitles || !subtitles.length) {
+        subtitleSection.style.display = 'none';
+        selectedSubtitleLanguages = defaultSubtitleLanguages.slice();
+        return;
+      }
+      subtitleSection.style.display = '';
+      // Pre-select: defaultSubtitleLanguages that are available, else keep prior selection that matches
+      const available = subtitles.map(s => s.languageCode);
+      const initSelected = new Set(
+        defaultSubtitleLanguages.filter(l => available.includes(l))
+          .concat(selectedSubtitleLanguages.filter(l => available.includes(l)))
+      );
+      selectedSubtitleLanguages = [...initSelected];
+
+      subtitleOptions.innerHTML = subtitles.map(s => {
+        const checked = initSelected.has(s.languageCode);
+        const autoLabel = s.isAuto ? ' (自动)' : '';
+        return `<label class="subtitle-option-item${s.isAuto ? ' is-auto' : ''}${checked ? ' is-checked' : ''}" 
+             data-lang="${escapeHtml(s.languageCode)}">
+          <input type="checkbox" ${checked ? 'checked' : ''}>
+          ${escapeHtml(s.languageCode)}${escapeHtml(autoLabel)}
+        </label>`;
+      }).join('');
+
+      subtitleOptions.querySelectorAll('.subtitle-option-item').forEach(item => {
+        const cb = item.querySelector('input[type="checkbox"]');
+        item.addEventListener('click', event => {
+          if (event.target === cb) return;
+          cb.checked = !cb.checked;
+          cb.dispatchEvent(new Event('change'));
+        });
+        cb.addEventListener('change', () => {
+          const lang = item.getAttribute('data-lang');
+          if (cb.checked) {
+            if (!selectedSubtitleLanguages.includes(lang)) selectedSubtitleLanguages.push(lang);
+          } else {
+            selectedSubtitleLanguages = selectedSubtitleLanguages.filter(l => l !== lang);
+          }
+          item.classList.toggle('is-checked', cb.checked);
+        });
+      });
+    }
+
+    function renderDefaultSubtitleTags() {
+      if (!defaultSubtitleTagList) return;
+      defaultSubtitleTagList.innerHTML = defaultSubtitleLanguages.map(lang =>
+        `<span class="lang-tag">${escapeHtml(lang)}<button type="button" class="lang-tag-remove" data-remove-lang="${escapeHtml(lang)}" title="移除">×</button></span>`
+      ).join('');
+      defaultSubtitleTagList.querySelectorAll('[data-remove-lang]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const lang = btn.getAttribute('data-remove-lang');
+          defaultSubtitleLanguages = defaultSubtitleLanguages.filter(l => l !== lang);
+          renderDefaultSubtitleTags();
+        });
+      });
+    }
+
+    function addDefaultSubtitleLanguage() {
+      const val = defaultSubtitleInput.value.trim();
+      if (!val) return;
+      if (!defaultSubtitleLanguages.includes(val)) {
+        defaultSubtitleLanguages.push(val);
+        renderDefaultSubtitleTags();
+      }
+      defaultSubtitleInput.value = '';
+    }
+
     function latestLog(task) {
       if (!Array.isArray(task.recentLogs) || !task.recentLogs.length) {
         return `进度: ${formatProgress(task.progress)}`;
       }
-      return task.recentLogs[task.recentLogs.length - 1];
+      const filtered = task.recentLogs.filter(
+        log => !/Deleting original file .+\(pass -k to keep\)/.test(log)
+      );
+      if (!filtered.length) return `进度: ${formatProgress(task.progress)}`;
+      return filtered[filtered.length - 1];
     }
 
     function formatProgress(progress) {
@@ -864,19 +1746,7 @@
 
     function setParseBusy(isBusy) {
       parseBtn.disabled = isBusy;
-      queueBtn.disabled = isBusy || !lastResolved || Boolean(lastResolved?.resolved?.isPlaylist);
-    }
-
-    function startPolling() {
-      if (pollHandle) {
-        clearInterval(pollHandle);
-      }
-
-      pollHandle = setInterval(() => {
-        loadTasks().catch(error => {
-          queueSummary.textContent = `刷新失败: ${String(error.message || error)}`;
-        });
-      }, 2500);
+      queueBtn.disabled = isBusy || !lastResolved;
     }
 
     function formatBytes(value) {
@@ -915,6 +1785,420 @@
       return trimmed ? trimmed : null;
     }
 
+    function getUiSetting(key, defaultValue) {
+      try {
+        const stored = localStorage.getItem('ytdlp_ui_' + key);
+        if (stored === null) return defaultValue;
+        return JSON.parse(stored);
+      } catch { return defaultValue; }
+    }
+
+    function setUiSetting(key, value) {
+      localStorage.setItem('ytdlp_ui_' + key, JSON.stringify(value));
+    }
+
+    async function clearCompletedTasks() {
+      const completed = taskCache.filter(t => t.state === 'completed');
+      if (!completed.length) return;
+      await Promise.all(
+        completed.map(t =>
+          fetch(`/api/tasks/${encodeURIComponent(t.id)}`, { method: 'DELETE' }).catch(() => {})
+        )
+      );
+      await loadTasks();
+    }
+
+    // ── Library feature ──
+
+    async function loadLibraryTree() {
+      try {
+        const payload = await requestJson('/api/library/tree');
+        currentLibrary = payload;
+        renderLibraryTree(payload);
+      } catch (error) {
+        librarySummary.textContent = `加载失败: ${String(error.message || error)}`;
+      }
+    }
+
+    function startSSE() {
+      let evtSource = null;
+      let retryTimer = null;
+
+      function connect() {
+        if (evtSource) evtSource.close();
+        evtSource = new EventSource('/api/events');
+
+        evtSource.addEventListener('task.updated', e => {
+          try {
+            const payload = JSON.parse(e.data);
+            const task = payload.data;
+            const idx = taskCache.findIndex(t => t.id === task.id);
+            if (idx >= 0) {
+              taskCache[idx] = task;
+            } else {
+              taskCache.push(task);
+            }
+            renderTasks(taskCache);
+          } catch (_) {}
+        });
+
+        evtSource.addEventListener('task.removed', e => {
+          try {
+            const payload = JSON.parse(e.data);
+            const taskId = payload.data?.taskId;
+            if (taskId) {
+              taskCache = taskCache.filter(t => t.id !== taskId);
+              renderTasks(taskCache);
+            }
+          } catch (_) {}
+        });
+
+        evtSource.addEventListener('library.changed', () => {
+          loadLibraryTree().catch(() => {});
+        });
+
+        evtSource.onerror = () => {
+          evtSource.close();
+          evtSource = null;
+          if (retryTimer) clearTimeout(retryTimer);
+          retryTimer = setTimeout(connect, 3000);
+        };
+      }
+
+      connect();
+    }
+
+    function renderLibraryTree(payload) {
+      libraryIndex = new Map();
+      const nodes = Array.isArray(payload?.nodes) ? payload.nodes : [];
+      indexLibraryNodes(nodes);
+      pruneLibrarySelections();
+
+      const itemCount = countLibraryItems(nodes);
+      librarySummary.textContent = `${itemCount} 个条目`;
+
+      if (!nodes.length) {
+        libraryTree.innerHTML = '<div class="empty">下载库还是空的。</div>';
+        populateSubdirSuggestions([]);
+        syncLibraryToolbar();
+        return;
+      }
+
+      libraryTree.innerHTML = renderLibraryNodes(nodes, 0);
+      attachLibraryTreeEvents();
+
+      const allDirs = [];
+      collectDirectoryPaths(nodes, allDirs);
+      populateSubdirSuggestions(allDirs);
+      syncLibraryToolbar();
+    }
+
+    function renderLibraryNodes(nodes, depth) {
+      return nodes.map(node => renderLibraryNode(node, depth)).join('');
+    }
+
+    function renderLibraryNode(node, depth) {
+      const isDir = node.itemType === 'directory';
+      const isExpanded = expandedFolders.has(node.relativePath);
+      const isChecked = selectedLibraryPaths.has(node.relativePath);
+      const paddingLeft = 8 + depth * 20;
+      const metaText = isDir ? `${(node.children || []).length} 项` : formatBytes(node.sizeBytes);
+      const ep = escapeHtml(node.relativePath);
+
+      const toggleHtml = isDir
+        ? `<button type="button" class="lib-toggle-btn" data-lib-toggle="${ep}">${isExpanded ? '▼' : '▶'}</button>`
+        : `<span class="lib-toggle-spacer"></span>`;
+
+      const actionsHtml = isDir
+        ? `<button type="button" class="secondary lib-act-btn" data-lib-action="open-folder" data-lib-path="${ep}">打开</button>`
+        : `<button type="button" class="secondary lib-act-btn" data-lib-action="play" data-lib-path="${ep}">播放</button>`
+          + `<button type="button" class="secondary lib-act-btn" data-lib-action="open-folder" data-lib-path="${ep}">打开目录</button>`;
+
+      const rowClass = ['lib-row', isChecked ? 'is-checked' : ''].filter(Boolean).join(' ');
+      const childrenHtml = isDir && (node.children || []).length
+        ? `<div class="lib-children ${isExpanded ? '' : 'is-collapsed'}" data-lib-children="${ep}">${renderLibraryNodes(node.children, depth + 1)}</div>`
+        : '';
+
+      return `
+        <div class="lib-node">
+          <div class="${rowClass}" style="padding-left:${paddingLeft}px;">
+            <label class="lib-check-label"><input type="checkbox" class="lib-checkbox" data-lib-check="${ep}" ${isChecked ? 'checked' : ''}></label>
+            ${toggleHtml}
+            <span class="lib-icon">${isDir ? '📁' : getFileIcon(node.name)}</span>
+            <span class="lib-name">${escapeHtml(node.name)}</span>
+            <span class="lib-meta">${escapeHtml(metaText)}</span>
+            <div class="lib-row-actions">${actionsHtml}</div>
+          </div>
+          ${childrenHtml}
+        </div>
+      `;
+    }
+
+    function attachLibraryTreeEvents() {
+      libraryTree.querySelectorAll('.lib-checkbox').forEach(cb => {
+        cb.addEventListener('change', event => {
+          const path = event.currentTarget.getAttribute('data-lib-check') || '';
+          if (event.currentTarget.checked) {
+            selectedLibraryPaths.add(path);
+          } else {
+            selectedLibraryPaths.delete(path);
+          }
+          const row = event.currentTarget.closest('.lib-row');
+          if (row) row.classList.toggle('is-checked', event.currentTarget.checked);
+          syncLibraryToolbar();
+        });
+      });
+
+      libraryTree.querySelectorAll('[data-lib-toggle]').forEach(btn => {
+        btn.addEventListener('click', event => {
+          const path = event.currentTarget.getAttribute('data-lib-toggle') || '';
+          if (expandedFolders.has(path)) {
+            expandedFolders.delete(path);
+          } else {
+            expandedFolders.add(path);
+          }
+          const isExpanded = expandedFolders.has(path);
+          const childrenEl = libraryTree.querySelector(`[data-lib-children="${CSS.escape(path)}"]`);
+          if (childrenEl) childrenEl.classList.toggle('is-collapsed', !isExpanded);
+          event.currentTarget.textContent = isExpanded ? '▼' : '▶';
+        });
+      });
+
+      libraryTree.querySelectorAll('[data-lib-action]').forEach(btn => {
+        btn.addEventListener('click', async event => {
+          const action = event.currentTarget.getAttribute('data-lib-action');
+          const path = event.currentTarget.getAttribute('data-lib-path') || '';
+          if (action === 'play') {
+            await runLibraryOperation(async () => {
+              await requestJson('/api/library/open-item', { method: 'POST', body: JSON.stringify({ relativePath: path }) });
+              setLibraryMessage(`已打开: ${path}`);
+            });
+          } else if (action === 'open-folder') {
+            await runLibraryOperation(async () => {
+              await requestJson('/api/library/open-folder', { method: 'POST', body: JSON.stringify({ relativePath: path }) });
+              setLibraryMessage(`已打开目录: ${path}`);
+            });
+          }
+        });
+      });
+    }
+
+    function syncLibraryToolbar() {
+      const count = selectedLibraryPaths.size;
+      const onlyOneFolder = count === 1 && libraryIndex.get([...selectedLibraryPaths][0])?.itemType === 'directory';
+      libraryBatchSummary.textContent = count > 0 ? `已选 ${count} 项` : '';
+      renameLibraryBtn.disabled = libraryBusy || !onlyOneFolder;
+      moveSelectedLibraryBtn.disabled = libraryBusy || count === 0;
+      deleteSelectedLibraryBtn.disabled = libraryBusy || count === 0;
+      createLibraryFolderBtn.disabled = libraryBusy;
+    }
+
+    function syncLibraryBusyState() {
+      refreshLibraryBtn.disabled = libraryBusy;
+      syncLibraryToolbar();
+    }
+
+    async function runLibraryOperation(task) {
+      if (libraryBusy) return;
+      libraryBusy = true;
+      syncLibraryBusyState();
+      try {
+        await task();
+      } finally {
+        libraryBusy = false;
+        syncLibraryBusyState();
+      }
+    }
+
+    async function createFolderAtSelection() {
+      const paths = Array.from(selectedLibraryPaths);
+      let parentDir = '';
+      if (paths.length === 1) {
+        const node = libraryIndex.get(paths[0]);
+        parentDir = node?.itemType === 'directory' ? node.relativePath : (node?.relativePath?.includes('/') ? node.relativePath.split('/').slice(0, -1).join('/') : '');
+      }
+
+      const name = window.prompt('输入新文件夹名');
+      if (!name || !name.trim()) return;
+
+      await runLibraryOperation(async () => {
+        await requestJson('/api/library/create-folder', {
+          method: 'POST',
+          body: JSON.stringify({ parentDir: parentDir, name: name.trim() })
+        });
+        setLibraryMessage(`已创建文件夹: ${name.trim()}`);
+        await loadLibraryTree();
+      });
+    }
+
+    async function renameSelectedLibraryFolder() {
+      const paths = Array.from(selectedLibraryPaths);
+      if (paths.length !== 1) return;
+      const node = libraryIndex.get(paths[0]);
+      if (!node || node.itemType !== 'directory') return;
+      const newName = window.prompt('输入新目录名', node.name);
+      if (!newName || newName.trim() === node.name) return;
+
+      await runLibraryOperation(async () => {
+        const payload = await requestJson('/api/library/rename', {
+          method: 'POST',
+          body: JSON.stringify({ relativePath: node.relativePath, newName: newName.trim() })
+        });
+        const newPath = payload.moved?.[0]?.to || '';
+        selectedLibraryPaths = new Set(newPath ? [newPath] : []);
+        setLibraryMessage(`已重命名: ${node.name} → ${newName.trim()}`);
+        await loadLibraryTree();
+      });
+    }
+
+    async function moveBatchLibraryItems() {
+      const paths = Array.from(selectedLibraryPaths);
+      if (!paths.length) {
+        setLibraryMessage('请先勾选要移动的条目。', true);
+        return;
+      }
+      openPickMoveDialog(paths);
+    }
+
+    async function deleteBatchLibraryItems() {
+      const paths = Array.from(selectedLibraryPaths);
+      if (!paths.length) {
+        setLibraryMessage('请先勾选要删除的条目。', true);
+        return;
+      }
+      const confirmed = window.confirm(`确认删除已选的 ${paths.length} 个条目？`);
+      if (!confirmed) return;
+      await runLibraryOperation(async () => {
+        await requestJson('/api/library/items', {
+          method: 'DELETE',
+          body: JSON.stringify({ targetPaths: paths })
+        });
+        selectedLibraryPaths = new Set();
+        setLibraryMessage(`已删除 ${paths.length} 个条目。`);
+        await loadLibraryTree();
+      });
+    }
+
+    function openPickMoveDialog(paths) {
+      moveDialogSelectedPath = '';
+      const nodes = Array.isArray(currentLibrary?.nodes) ? currentLibrary.nodes : [];
+      moveFolderTree.innerHTML =
+        `<button type="button" class="lib-dir-btn is-selected" data-move-dir="">📁 (根目录)</button>` +
+        renderDialogFolderNodes(nodes, 0);
+      moveFolderTree.querySelectorAll('[data-move-dir]').forEach(btn => {
+        btn.addEventListener('click', event => {
+          moveDialogSelectedPath = event.currentTarget.getAttribute('data-move-dir') || '';
+          moveFolderTree.querySelectorAll('[data-move-dir]').forEach(b => b.classList.remove('is-selected'));
+          event.currentTarget.classList.add('is-selected');
+        });
+      });
+      moveFolderDialog.dataset.movePaths = JSON.stringify(paths);
+      moveFolderDialog.showModal();
+    }
+
+    function renderDialogFolderNodes(nodes, depth) {
+      return (nodes || [])
+        .filter(node => node.itemType === 'directory')
+        .map(node => {
+          const paddingLeft = 12 + depth * 20;
+          return `<button type="button" class="lib-dir-btn" data-move-dir="${escapeHtml(node.relativePath)}" style="padding-left:${paddingLeft}px;">📁 ${escapeHtml(node.name)}</button>` +
+            ((node.children || []).length ? renderDialogFolderNodes(node.children, depth + 1) : '');
+        })
+        .join('');
+    }
+
+    async function confirmMoveDialog() {
+      const paths = JSON.parse(moveFolderDialog.dataset.movePaths || '[]');
+      moveFolderDialog.close();
+      await runLibraryOperation(async () => {
+        const payload = await requestJson('/api/library/move', {
+          method: 'POST',
+          body: JSON.stringify({ sourcePaths: paths, destinationDir: moveDialogSelectedPath })
+        });
+        const movedTargets = Array.isArray(payload.moved) ? payload.moved.map(item => item.to) : [];
+        selectedLibraryPaths = new Set(movedTargets);
+        setLibraryMessage(`已移动 ${paths.length} 个条目。`);
+        await loadLibraryTree();
+      });
+    }
+
+    function indexLibraryNodes(nodes) {
+      for (const node of (nodes || [])) {
+        libraryIndex.set(node.relativePath, node);
+        if (node.itemType === 'directory' && node.children) {
+          indexLibraryNodes(node.children);
+        }
+      }
+    }
+
+    function pruneLibrarySelections() {
+      for (const path of selectedLibraryPaths) {
+        if (!libraryIndex.has(path)) {
+          selectedLibraryPaths.delete(path);
+        }
+      }
+    }
+
+    function countLibraryItems(nodes) {
+      let count = 0;
+      for (const node of (nodes || [])) {
+        count += 1;
+        if (node.itemType === 'directory') count += countLibraryItems(node.children);
+      }
+      return count;
+    }
+
+    function collectDirectoryPaths(nodes, result) {
+      for (const node of (nodes || [])) {
+        if (node.itemType === 'directory') {
+          result.push(node.relativePath);
+          collectDirectoryPaths(node.children, result);
+        }
+      }
+    }
+
+    function populateSubdirSuggestions(dirs) {
+      // Update the targetSubdir <select>
+      const sel = formFields.targetSubdir;
+      if (sel && sel.tagName === 'SELECT') {
+        const current = sel.value;
+        sel.innerHTML = `<option value="">根目录</option>` +
+          dirs.map(d => `<option value="${escapeHtml(d)}"${d === current ? ' selected' : ''}>${escapeHtml(d)}</option>`).join('');
+      }
+      // Update the defaultTargetSubdir <select>
+      const defaultSel = document.getElementById('defaultTargetSubdir');
+      if (defaultSel && defaultSel.tagName === 'SELECT') {
+        const current = defaultSel.value;
+        defaultSel.innerHTML = `<option value="">根目录</option>` +
+          dirs.map(d => `<option value="${escapeHtml(d)}"${d === current ? ' selected' : ''}>${escapeHtml(d)}</option>`).join('');
+      }
+    }
+
+    function getFileIcon(name) {
+      const ext = String(name || '').includes('.') ? String(name).split('.').pop().toLowerCase() : '';
+      if (['mp4', 'mkv', 'webm', 'avi', 'mov', 'wmv', 'flv', 'm4v'].includes(ext)) return '🎦';
+      if (['mp3', 'm4a', 'opus', 'aac', 'flac', 'ogg', 'wav'].includes(ext)) return '🎵';
+      return '📄';
+    }
+
+    function setLibraryMessage(message, isError = false) {
+      libraryMessage.textContent = message;
+      libraryMessage.style.color = isError ? 'var(--danger)' : 'var(--muted)';
+    }
+
+    async function requestJson(url, options = {}) {
+      const fetchOptions = {
+        headers: { 'Content-Type': 'application/json' },
+        ...options
+      };
+      const response = await fetch(url, fetchOptions);
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload?.error?.message || `HTTP ${response.status}`);
+      }
+      return payload;
+    }
+
     function escapeHtml(value) {
       return String(value)
         .replace(/&/g, '&amp;')
@@ -924,9 +2208,31 @@
         .replace(/'/g, '&#39;');
     }
 
+    defaultSubtitleAddBtn.addEventListener('click', addDefaultSubtitleLanguage);
+    defaultSubtitleInput.addEventListener('keydown', event => {
+      if (event.key === 'Enter') { event.preventDefault(); addDefaultSubtitleLanguage(); }
+    });
+
     parseBtn.addEventListener('click', parseCurrentUrl);
     queueBtn.addEventListener('click', addToQueue);
     document.getElementById('saveSettings').addEventListener('click', saveSettings);
+
+    refreshLibraryBtn.addEventListener('click', () => {
+      loadLibraryTree().catch(error => {
+        librarySummary.textContent = `刷新失败: ${String(error.message || error)}`;
+      });
+    });
+
+    document.getElementById('openLibraryRootBtn').addEventListener('click', () => {
+      requestJson('/api/library/open-folder', { method: 'POST', body: JSON.stringify({ relativePath: '' }) })
+        .catch(() => {});
+    });
+    createLibraryFolderBtn.addEventListener('click', createFolderAtSelection);
+    renameLibraryBtn.addEventListener('click', renameSelectedLibraryFolder);
+    moveSelectedLibraryBtn.addEventListener('click', moveBatchLibraryItems);
+    deleteSelectedLibraryBtn.addEventListener('click', deleteBatchLibraryItems);
+    moveFolderCancelBtn.addEventListener('click', () => moveFolderDialog.close());
+    moveFolderConfirmBtn.addEventListener('click', confirmMoveDialog);
 
     initialize().catch(error => {
       bridgeStatus.textContent = '初始化失败';

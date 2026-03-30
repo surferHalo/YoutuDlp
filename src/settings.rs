@@ -20,7 +20,13 @@ pub struct AppSettings {
     pub default_download_mode: String,
     pub default_container: String,
     pub default_quality: String,
+    pub default_subtitle_languages: Vec<String>,
+    pub default_cookie_file_name: Option<String>,
+    pub default_raw_args: Vec<String>,
+    pub default_raw_format_code: Option<String>,
     pub tool_overrides: ToolOverrides,
+    pub playlist_resolve_concurrency: u8,
+    pub playlist_resolve_interval_ms: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -50,7 +56,13 @@ impl Default for AppSettings {
             default_download_mode: "video".to_string(),
             default_container: "mp4".to_string(),
             default_quality: "1080p".to_string(),
+            default_subtitle_languages: Vec::new(),
+            default_cookie_file_name: None,
+            default_raw_args: Vec::new(),
+            default_raw_format_code: None,
             tool_overrides: ToolOverrides::default(),
+            playlist_resolve_concurrency: 3,
+            playlist_resolve_interval_ms: 300,
         }
     }
 }
@@ -84,6 +96,29 @@ impl AppSettings {
             bail!("default quality cannot be empty");
         }
 
+        if self
+            .default_subtitle_languages
+            .iter()
+            .any(|value| value.trim().is_empty())
+        {
+            bail!("default subtitle languages cannot contain empty values");
+        }
+
+        if self
+            .default_raw_args
+            .iter()
+            .any(|value| value.trim().is_empty())
+        {
+            bail!("default raw args cannot contain empty values");
+        }
+
+        if self.playlist_resolve_concurrency == 0 {
+            bail!("playlist resolve concurrency must be at least 1");
+        }
+        if self.playlist_resolve_concurrency > 16 {
+            bail!("playlist resolve concurrency cannot exceed 16");
+        }
+
         Ok(())
     }
 }
@@ -113,7 +148,7 @@ impl SettingsStore {
 
     pub fn save(&self, settings: &AppSettings) -> Result<()> {
         settings.validate()?;
-        storage::write_json_pretty_atomic(&self.path, settings)
+        storage::write_json_atomic(&self.path, settings)
     }
 }
 

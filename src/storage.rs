@@ -1,9 +1,13 @@
-use std::fs;
+use std::fs::{self, File};
+use std::io::Write as IoWrite;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use anyhow::{Context, Result};
 use directories::ProjectDirs;
 use serde::Serialize;
+
+static WRITE_SEQ: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Debug, Clone)]
 pub struct AppPaths {
@@ -68,32 +72,80 @@ impl AppPaths {
     }
 }
 
-pub fn write_json_pretty_atomic<T>(path: &Path, value: &T) -> Result<()>
+/// Atomically write raw bytes to `path` (same remove+rename strategy as
+/// [`write_json_atomic`]).
+pub fn write_raw_atomic(path: &Path, bytes: &[u8]) -> Result<()> {
+    let parent = path
+        .parent()
+        .with_context(|| format!("path {} has no parent directory", path.display()))?;
+
+    let seq = WRITE_SEQ.fetch_add(1, Ordering::Relaxed);
+    let stem = path.file_name().and_then(|n| n.to_str()).unwrap_or("file");
+    let tmp_path = parent.join(format!("{stem}.{seq}.tmp"));
+
+    fs::create_dir_all(parent)
+        .with_context(|| format!("failed to create parent directory {}", parent.display()))?;
+
+    let mut file = File::create(&tmp_path)
+        .with_context(|| format!("failed to create temp file {}", tmp_path.display()))?;
+    file.write_all(bytes)
+        .with_context(|| format!("failed to write temp file {}", tmp_path.display()))?;
+    file.sync_all()
+        .with_context(|| format!("failed to sync temp file {}", tmp_path.display()))?;
+    drop(file);
+
+    if path.exists() {
+        fs::remove_file(path)
+            .with_context(|| format!("failed to replace file {}", path.display()))?;
+    }
+    fs::rename(&tmp_path, path)
+        .with_context(|| format!("failed to finalise write to {}", path.display()))?;
+
+    Ok(())
+}
+
+/// Serialize `value` to pretty JSON and atomically write it to `path`.
+///
+/// Uses a unique per-call temp filename derived from a global sequence counter
+/// so that concurrent writes to *different* final paths never share the same
+/// `.tmp` file.  Writes to the *same* final path must be serialised by the
+/// caller (e.g. via `TaskStore::write_lock`) so the remove + rename pair
+/// cannot be interleaved.
+pub fn write_json_atomic<T>(path: &Path, value: &T) -> Result<()>
 where
     T: Serialize,
 {
     let bytes = serde_json::to_vec_pretty(value).context("failed to serialize JSON")?;
-    write_atomic(path, &bytes)
-}
 
-pub fn write_atomic(path: &Path, bytes: &[u8]) -> Result<()> {
     let parent = path
         .parent()
         .with_context(|| format!("path {} has no parent directory", path.display()))?;
-    let tmp_path = path.with_extension("tmp");
+
+    let seq = WRITE_SEQ.fetch_add(1, Ordering::Relaxed);
+    let stem = path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("file");
+    let tmp_path = parent.join(format!("{stem}.{seq}.tmp"));
 
     fs::create_dir_all(parent)
         .with_context(|| format!("failed to create parent directory {}", parent.display()))?;
-    fs::write(&tmp_path, bytes)
-        .with_context(|| format!("failed to write temp file {}", tmp_path.display()))?;
 
+    let mut file = File::create(&tmp_path)
+        .with_context(|| format!("failed to create temp file {}", tmp_path.display()))?;
+    file.write_all(&bytes)
+        .with_context(|| format!("failed to write temp file {}", tmp_path.display()))?;
+    file.sync_all()
+        .with_context(|| format!("failed to sync temp file {}", tmp_path.display()))?;
+    drop(file);
+
+    // Windows does not support rename-over-existing; remove first then rename.
     if path.exists() {
         fs::remove_file(path)
-            .with_context(|| format!("failed to replace existing file {}", path.display()))?;
+            .with_context(|| format!("failed to replace file {}", path.display()))?;
     }
-
     fs::rename(&tmp_path, path)
-        .with_context(|| format!("failed to move temp file into place at {}", path.display()))?;
+        .with_context(|| format!("failed to finalise write to {}", path.display()))?;
 
     Ok(())
 }

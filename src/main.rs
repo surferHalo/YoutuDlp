@@ -1,5 +1,8 @@
 mod app;
+mod cookies;
 mod downloads;
+mod events;
+mod library;
 mod settings;
 mod storage;
 mod tasks;
