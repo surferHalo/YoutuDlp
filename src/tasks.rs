@@ -109,6 +109,10 @@ pub struct TaskRecord {
     #[serde(default)]
     pub cookie_file_name: Option<String>,
     #[serde(default)]
+    pub cookie_browser: Option<String>,
+    #[serde(default)]
+    pub cookie_browser_profile: Option<String>,
+    #[serde(default)]
     pub raw_args: Vec<String>,
     #[serde(default)]
     pub raw_format_code: Option<String>,
@@ -150,6 +154,8 @@ pub struct TaskView {
     pub container: String,
     pub subtitle_languages: Vec<String>,
     pub cookie_file_name: Option<String>,
+    pub cookie_browser: Option<String>,
+    pub cookie_browser_profile: Option<String>,
     pub raw_args: Vec<String>,
     pub raw_format_code: Option<String>,
     pub created_at: String,
@@ -190,6 +196,8 @@ impl TaskView {
             container: record.container.clone(),
             subtitle_languages: record.subtitle_languages.clone(),
             cookie_file_name: record.cookie_file_name.clone(),
+            cookie_browser: record.cookie_browser.clone(),
+            cookie_browser_profile: record.cookie_browser_profile.clone(),
             raw_args: record.raw_args.clone(),
             raw_format_code: record.raw_format_code.clone(),
             created_at: record.created_at.clone(),
@@ -305,6 +313,10 @@ pub struct CreateTaskRequest {
     #[serde(default)]
     pub cookie_file_name: Option<String>,
     #[serde(default)]
+    pub cookie_browser: Option<String>,
+    #[serde(default)]
+    pub cookie_browser_profile: Option<String>,
+    #[serde(default)]
     pub raw_args: Vec<String>,
     #[serde(default)]
     pub raw_format_code: Option<String>,
@@ -323,6 +335,10 @@ pub struct CreatePlaylistTasksRequest {
     pub subtitle_languages: Vec<String>,
     #[serde(default)]
     pub cookie_file_name: Option<String>,
+    #[serde(default)]
+    pub cookie_browser: Option<String>,
+    #[serde(default)]
+    pub cookie_browser_profile: Option<String>,
     #[serde(default)]
     pub raw_args: Vec<String>,
     #[serde(default)]
@@ -705,6 +721,8 @@ impl TaskStore {
                 container: request.container.clone(),
                 subtitle_languages: request.subtitle_languages.clone(),
                 cookie_file_name: request.cookie_file_name.clone(),
+                cookie_browser: request.cookie_browser.clone(),
+                cookie_browser_profile: request.cookie_browser_profile.clone(),
                 raw_args: request.raw_args.clone(),
                 raw_format_code: request.raw_format_code.clone(),
                 created_at: now.clone(),
@@ -751,6 +769,8 @@ impl TaskStore {
             container: request.container.clone(),
             subtitle_languages: request.subtitle_languages.clone(),
             cookie_file_name: request.cookie_file_name.clone(),
+            cookie_browser: request.cookie_browser.clone(),
+            cookie_browser_profile: request.cookie_browser_profile.clone(),
             raw_args: request.raw_args.clone(),
             raw_format_code: request.raw_format_code.clone(),
             created_at: now.clone(),
@@ -1058,6 +1078,8 @@ fn make_single_task(request: &CreateTaskRequest) -> TaskRecord {
         container: request.container.clone(),
         subtitle_languages: request.subtitle_languages.clone(),
         cookie_file_name: request.cookie_file_name.clone(),
+        cookie_browser: request.cookie_browser.clone(),
+        cookie_browser_profile: request.cookie_browser_profile.clone(),
         raw_args: request.raw_args.clone(),
         raw_format_code: request.raw_format_code.clone(),
         created_at: now.clone(),

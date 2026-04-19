@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use anyhow::{Context, Result, bail};
 use serde::{Deserialize, Serialize};
 
+use crate::cookies::validate_cookie_preferences;
 use crate::storage;
 
 pub const MAX_CONCURRENT_DOWNLOADS_LIMIT: u8 = 8;
@@ -22,6 +23,8 @@ pub struct AppSettings {
     pub default_quality: String,
     pub default_subtitle_languages: Vec<String>,
     pub default_cookie_file_name: Option<String>,
+    pub default_cookie_browser: Option<String>,
+    pub default_cookie_browser_profile: Option<String>,
     pub default_raw_args: Vec<String>,
     pub default_raw_format_code: Option<String>,
     pub tool_overrides: ToolOverrides,
@@ -58,6 +61,8 @@ impl Default for AppSettings {
             default_quality: "1080p".to_string(),
             default_subtitle_languages: Vec::new(),
             default_cookie_file_name: None,
+            default_cookie_browser: None,
+            default_cookie_browser_profile: None,
             default_raw_args: Vec::new(),
             default_raw_format_code: None,
             tool_overrides: ToolOverrides::default(),
@@ -103,6 +108,12 @@ impl AppSettings {
         {
             bail!("default subtitle languages cannot contain empty values");
         }
+
+        validate_cookie_preferences(
+            self.default_cookie_file_name.as_deref(),
+            self.default_cookie_browser.as_deref(),
+            self.default_cookie_browser_profile.as_deref(),
+        )?;
 
         if self
             .default_raw_args

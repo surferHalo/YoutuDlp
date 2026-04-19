@@ -18,7 +18,7 @@ use tokio_stream::StreamExt;
 use tokio_stream::wrappers::BroadcastStream;
 
 use crate::app::AppState;
-use crate::cookies::{ImportCookiesRequest, ImportCookiesResponse, import_cookies};
+use crate::cookies::{ImportCookiesRequest, ImportCookiesResponse, apply_cookie_arguments, explain_cookie_error, import_cookies};
 use crate::downloads;
 use crate::events::{self, ServerEvent};
 use crate::library;
@@ -167,27 +167,39 @@ async fn resolve_url(
         .path
         .clone()
         .ok_or_else(|| ApiError::bad_request("yt-dlp is not configured"))?;
+    let settings = state.settings.read().await.clone();
+    let default_cookie_file_name = settings.default_cookie_file_name.clone();
+    let default_cookie_browser = settings.default_cookie_browser.clone();
+    let default_cookie_browser_profile = settings.default_cookie_browser_profile.clone();
 
     // ── Step 1: flat-playlist scan (fast) ─────────────────────────────────────
     // Detects playlist vs single video without fetching per-entry metadata.
-    let flat_output = Command::new(&yt_dlp_path)
+    let mut flat_command = Command::new(&yt_dlp_path);
+    flat_command
+        .arg("--ignore-config")
         .arg("--flat-playlist")
         .arg("--dump-single-json")
+        .arg("--ignore-no-formats-error")
         .arg("--skip-download")
         .arg("--no-warnings")
         .arg(&request.url)
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .output()
-        .await
-        .map_err(ApiError::internal)?;
+        .stderr(Stdio::piped());
+    apply_cookie_arguments(
+        &mut flat_command,
+        &state.paths.runtime_dir,
+        default_cookie_file_name.as_deref(),
+        default_cookie_browser.as_deref(),
+        default_cookie_browser_profile.as_deref(),
+    );
+    let flat_output = flat_command.output().await.map_err(ApiError::internal)?;
 
     if !flat_output.status.success() {
         let message = String::from_utf8_lossy(&flat_output.stderr).trim().to_string();
         return Err(ApiError::bad_request(if message.is_empty() {
             "yt-dlp resolve failed".to_string()
         } else {
-            message
+            explain_cookie_error(&message).unwrap_or(message)
         }));
     }
 
@@ -225,10 +237,8 @@ async fn resolve_url(
         .cloned()
         .unwrap_or_default();
 
-    let (concurrency, interval_ms) = {
-        let s = state.settings.read().await;
-        (s.playlist_resolve_concurrency as usize, s.playlist_resolve_interval_ms)
-    };
+    let concurrency = settings.playlist_resolve_concurrency as usize;
+    let interval_ms = settings.playlist_resolve_interval_ms;
 
     eprintln!(
         "[resolve] playlist: {} entries, concurrency={concurrency}, interval={interval_ms}ms",
@@ -254,12 +264,25 @@ async fn resolve_url(
             .expect("semaphore closed");
 
         let yt_dlp = yt_dlp_path.clone();
+        let runtime_dir = state.paths.runtime_dir.clone();
         let playlist_url = request.url.clone();
+        let cookie_file_name = default_cookie_file_name.clone();
+        let cookie_browser = default_cookie_browser.clone();
+        let cookie_browser_profile = default_cookie_browser_profile.clone();
         let idx = i;
 
         let handle = tokio::spawn(async move {
             eprintln!("[resolve] entry {}: {entry_url}", idx + 1);
-            let resolved = match run_entry_resolve(&yt_dlp, &entry_url).await {
+            let resolved = match run_entry_resolve(
+                &yt_dlp,
+                &runtime_dir,
+                &entry_url,
+                cookie_file_name.as_deref(),
+                cookie_browser.as_deref(),
+                cookie_browser_profile.as_deref(),
+            )
+            .await
+            {
                 Ok(value) => resolve_playlist_entry(&playlist_url, &value)
                     .unwrap_or_else(|| flat_entry_fallback(&flat_entry, &entry_url)),
                 Err(err) => {
@@ -328,17 +351,30 @@ fn entry_url_from_flat(playlist_url: &str, flat: &Value) -> String {
 /// Runs yt-dlp `--dump-single-json` on a single entry URL and returns the parsed JSON.
 async fn run_entry_resolve(
     yt_dlp_path: &std::path::Path,
+    runtime_dir: &std::path::Path,
     url: &str,
+    cookie_file_name: Option<&str>,
+    cookie_browser: Option<&str>,
+    cookie_browser_profile: Option<&str>,
 ) -> Result<Value, anyhow::Error> {
-    let output = Command::new(yt_dlp_path)
+    let mut command = Command::new(yt_dlp_path);
+    command
+        .arg("--ignore-config")
         .arg("--dump-single-json")
+        .arg("--ignore-no-formats-error")
         .arg("--skip-download")
         .arg("--no-warnings")
         .arg(url)
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .output()
-        .await?;
+        .stderr(Stdio::piped());
+    apply_cookie_arguments(
+        &mut command,
+        runtime_dir,
+        cookie_file_name,
+        cookie_browser,
+        cookie_browser_profile,
+    );
+    let output = command.output().await?;
     if !output.status.success() {
         let msg = String::from_utf8_lossy(&output.stderr).trim().to_string();
         anyhow::bail!("yt-dlp failed: {msg}");
@@ -514,6 +550,10 @@ async fn create_task(
     if request.cookie_file_name.is_none() {
         request.cookie_file_name = settings.default_cookie_file_name.clone();
     }
+    if request.cookie_browser.is_none() {
+        request.cookie_browser = settings.default_cookie_browser.clone();
+        request.cookie_browser_profile = settings.default_cookie_browser_profile.clone();
+    }
     let filenames = state.library_filenames.read().await;
     let task = state
         .task_store
@@ -537,6 +577,10 @@ async fn create_playlist_tasks(
     let settings = state.settings.read().await.clone();
     if request.cookie_file_name.is_none() {
         request.cookie_file_name = settings.default_cookie_file_name.clone();
+    }
+    if request.cookie_browser.is_none() {
+        request.cookie_browser = settings.default_cookie_browser.clone();
+        request.cookie_browser_profile = settings.default_cookie_browser_profile.clone();
     }
     let filenames = state.library_filenames.read().await;
     let response = state

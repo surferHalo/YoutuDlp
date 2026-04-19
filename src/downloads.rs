@@ -12,7 +12,7 @@ use tracing::{error, warn};
 use std::os::unix::process::CommandExt as _;
 
 use crate::app::{ActiveDownload, AppState};
-use crate::cookies::cookie_file_path;
+use crate::cookies::{apply_cookie_arguments, explain_cookie_error};
 use crate::events::{self, ServerEvent};
 use crate::tasks::{RuntimeState, TaskKind, TaskProgress, TaskRecord, TaskState, TaskView, output_directory};
 
@@ -536,6 +536,7 @@ fn build_command(
     }
 
     command
+        .arg("--ignore-config")
         .arg("--newline")
         .arg("--progress")
         .arg("--paths")
@@ -547,15 +548,13 @@ fn build_command(
         .stderr(Stdio::piped())
         .current_dir(download_root);
 
-    if let Some(cookie_file_name) = task
-        .cookie_file_name
-        .as_deref()
-        .filter(|value| !value.trim().is_empty())
-    {
-        command
-            .arg("--cookies")
-            .arg(cookie_file_path(runtime_dir, cookie_file_name));
-    }
+    apply_cookie_arguments(
+        &mut command,
+        runtime_dir,
+        task.cookie_file_name.as_deref(),
+        task.cookie_browser.as_deref(),
+        task.cookie_browser_profile.as_deref(),
+    );
 
     if !task.subtitle_languages.is_empty() {
         command
@@ -688,13 +687,42 @@ async fn finalize_download(
             task.last_error = None;
         }
         Ok(status) => {
-            task.state = TaskState::Failed;
             // Use the last error line collected during the run if available.
             let last_hint = {
                 let rt = state.runtime_states.read().await;
                 rt.get(task_id).and_then(|r| r.error_hints.last().cloned())
             };
+
+            if should_retry_youtube_without_cookies(&task, last_hint.as_deref()) {
+                {
+                    let mut rt = state.runtime_states.write().await;
+                    let mut entry = RuntimeState::default();
+                    entry.push_log(
+                        "[warning] Authenticated YouTube format selection failed; retrying once without cookies.".to_string(),
+                    );
+                    rt.insert(task_id.to_string(), entry);
+                }
+
+                task.cookie_file_name = None;
+                task.cookie_browser = None;
+                task.cookie_browser_profile = None;
+                task.state = TaskState::Queued;
+                task.last_error = None;
+                task.update_timestamp();
+                state.task_store.save_task(&task)?;
+
+                let view = build_task_view(&state, &task).await;
+                events::publish(&state.event_tx, ServerEvent::task_updated(&view));
+                publish_refreshed_playlist_parents(&state)?;
+                schedule_pending(state).await?;
+                return Ok(());
+            }
+
+            task.state = TaskState::Failed;
             task.last_error = last_hint
+                .as_deref()
+                .and_then(explain_cookie_error)
+                .or(last_hint)
                 .or_else(|| Some(format!("yt-dlp exited with status {status}")));
         }
         Err(error) => {
@@ -730,6 +758,41 @@ async fn finalize_download(
     spawn_scheduler(state.clone());
 
     Ok(())
+}
+
+fn should_retry_youtube_without_cookies(task: &TaskRecord, last_hint: Option<&str>) -> bool {
+    let has_cookies = task
+        .cookie_file_name
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .is_some()
+        || task
+            .cookie_browser
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .is_some();
+
+    if !has_cookies {
+        return false;
+    }
+
+    let is_youtube = task
+        .extractor
+        .as_deref()
+        .map(|value| value.to_ascii_lowercase().contains("youtube"))
+        .unwrap_or(false)
+        || task.source_url.contains("youtube.com")
+        || task.source_url.contains("youtu.be");
+
+    if !is_youtube {
+        return false;
+    }
+
+    last_hint
+        .map(|message| message.to_ascii_lowercase().contains("requested format is not available"))
+        .unwrap_or(false)
 }
 
 fn spawn_scheduler(state: Arc<AppState>) {

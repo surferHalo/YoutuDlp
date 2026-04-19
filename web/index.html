@@ -1003,8 +1003,41 @@
             </div>
             <div class="card" style="grid-column: 1 / -1;">
               <strong>全局 Cookie</strong>
-              <div class="muted" style="margin-top:6px;margin-bottom:8px;font-size:0.82rem;">粘贴 Netscape/cookies.txt 格式的 Cookie 内容，yt-dlp 下载时会自动使用。留空则不使用 Cookie。</div>
-              <textarea id="globalCookieContent" rows="6" style="font-family:var(--mono);font-size:0.82rem;resize:vertical;" placeholder="# Netscape HTTP Cookie File&#10;.youtube.com	TRUE	/	TRUE	0	SAPISID	xxxx"></textarea>
+              <div class="muted" style="margin-top:6px;margin-bottom:8px;font-size:0.82rem;">优先使用 yt-dlp 的 <code>--cookies-from-browser</code> 自动读取浏览器登录态；如果你已经导出过 cookies.txt，也可以继续手动导入作为后备。</div>
+              <div style="display:grid;gap:10px;">
+                <div>
+                  <label for="defaultCookieMode">Cookie 来源</label>
+                  <select id="defaultCookieMode">
+                    <option value="none">不使用 Cookie</option>
+                    <option value="browser">自动读取浏览器 Cookie</option>
+                    <option value="manual">手动导入 cookies.txt</option>
+                  </select>
+                </div>
+                <div id="cookieBrowserFields" style="display:none;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;">
+                  <div>
+                    <label for="defaultCookieBrowser">浏览器</label>
+                    <select id="defaultCookieBrowser">
+                      <option value="">请选择</option>
+                      <option value="edge">Microsoft Edge</option>
+                      <option value="chrome">Google Chrome</option>
+                      <option value="brave">Brave</option>
+                      <option value="chromium">Chromium</option>
+                      <option value="firefox">Firefox</option>
+                      <option value="opera">Opera</option>
+                      <option value="vivaldi">Vivaldi</option>
+                      <option value="whale">Whale</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label for="defaultCookieBrowserProfile">Profile</label>
+                    <input id="defaultCookieBrowserProfile" type="text" placeholder="可选，例如 Default 或 Profile 1" />
+                  </div>
+                </div>
+                <div id="cookieManualFields" style="display:none;">
+                  <div class="muted" style="margin-bottom:8px;font-size:0.82rem;">粘贴 Netscape/cookies.txt 格式的 Cookie 内容。未重新粘贴时会继续沿用当前已保存的 Cookie 文件。</div>
+                  <textarea id="globalCookieContent" rows="6" style="font-family:var(--mono);font-size:0.82rem;resize:vertical;" placeholder="# Netscape HTTP Cookie File&#10;.youtube.com	TRUE	/	TRUE	0	SAPISID	xxxx"></textarea>
+                </div>
+              </div>
               <div id="globalCookieStatus" class="muted" style="margin-top:6px;font-size:0.82rem;"></div>
             </div>
           </div>
@@ -1045,6 +1078,11 @@
     const defaultSubtitleTagList = document.getElementById('defaultSubtitleTagList');
     const defaultSubtitleInput = document.getElementById('defaultSubtitleInput');
     const defaultSubtitleAddBtn = document.getElementById('defaultSubtitleAddBtn');
+    const defaultCookieMode = document.getElementById('defaultCookieMode');
+    const defaultCookieBrowser = document.getElementById('defaultCookieBrowser');
+    const defaultCookieBrowserProfile = document.getElementById('defaultCookieBrowserProfile');
+    const cookieBrowserFields = document.getElementById('cookieBrowserFields');
+    const cookieManualFields = document.getElementById('cookieManualFields');
     const globalCookieContent = document.getElementById('globalCookieContent');
     const globalCookieStatus = document.getElementById('globalCookieStatus');
 
@@ -1077,6 +1115,8 @@
     };
 
     let currentDefaultCookieFileName = null;
+    let currentDefaultCookieBrowser = null;
+    let currentDefaultCookieBrowserProfile = null;
 
     let currentStatus = null;
     let lastResolved = null;
@@ -1139,12 +1179,20 @@
       settingsFields.ffprobePath.value = settings.toolOverrides?.ffprobePath || '';
 
       currentDefaultCookieFileName = settings.defaultCookieFileName || null;
-      if (currentDefaultCookieFileName) {
-        globalCookieStatus.textContent = `当前已配置 Cookie 文件：${currentDefaultCookieFileName}。如需更新请重新粘贴内容后保存，留空则清除。`;
+      currentDefaultCookieBrowser = settings.defaultCookieBrowser || null;
+      currentDefaultCookieBrowserProfile = settings.defaultCookieBrowserProfile || null;
+      defaultCookieBrowser.value = currentDefaultCookieBrowser || '';
+      defaultCookieBrowserProfile.value = currentDefaultCookieBrowserProfile || '';
+      if (currentDefaultCookieBrowser) {
+        defaultCookieMode.value = 'browser';
+      } else if (currentDefaultCookieFileName) {
+        defaultCookieMode.value = 'manual';
       } else {
-        globalCookieStatus.textContent = '';
+        defaultCookieMode.value = 'none';
       }
+      syncCookieModeUi();
       // Don't prefill the textarea — cookie content may be sensitive
+      globalCookieContent.value = '';
 
       // UI-only settings (localStorage)
       settingsFields.clearCompletedOnStartup.checked = getUiSetting('clearCompletedOnStartup', false);
@@ -1285,32 +1333,42 @@
       setUiSetting('queuePageSize', Number(settingsFields.queuePageSize.value) || 5);
 
       try {
-        // Handle cookie content: import if provided, clear if explicitly emptied
+        const cookieMode = defaultCookieMode.value;
         const cookieText = globalCookieContent.value.trim();
         let resolvedCookieFileName = currentDefaultCookieFileName;
-        if (cookieText) {
-          const cookieResp = await fetch('/api/cookies/import', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fileName: 'global_default.txt', content: cookieText })
-          });
-          const cookiePayload = await cookieResp.json();
-          if (!cookieResp.ok) {
-            throw new Error(cookiePayload?.error?.message || 'Cookie 导入失败');
+        let resolvedCookieBrowser = null;
+        let resolvedCookieBrowserProfile = null;
+
+        if (cookieMode === 'browser') {
+          resolvedCookieBrowser = emptyToNull(defaultCookieBrowser.value);
+          resolvedCookieBrowserProfile = emptyToNull(defaultCookieBrowserProfile.value);
+          if (!resolvedCookieBrowser) {
+            throw new Error('请选择要自动读取 Cookie 的浏览器');
           }
-          resolvedCookieFileName = cookiePayload.cookieFileName;
-          globalCookieContent.value = '';
-        } else if (globalCookieContent.value === '' && currentDefaultCookieFileName) {
-          // User left textarea blank — treat as intentional clear only if they
-          // never typed anything (value is '' on load too, so we check the
-          // focused-and-cleared pattern via an explicit "clear" intent flag set below)
-          // For simplicity: blank textarea on save means "keep existing" unless
-          // clearCookieIntent flag is set by the clear button.
-          // resolvedCookieFileName stays as currentDefaultCookieFileName
+        } else if (cookieMode === 'manual') {
+          if (cookieText) {
+            const cookieResp = await fetch('/api/cookies/import', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ fileName: 'global_default.txt', content: cookieText })
+            });
+            const cookiePayload = await cookieResp.json();
+            if (!cookieResp.ok) {
+              throw new Error(cookiePayload?.error?.message || 'Cookie 导入失败');
+            }
+            resolvedCookieFileName = cookiePayload.cookieFileName;
+            globalCookieContent.value = '';
+          } else if (!resolvedCookieFileName) {
+            throw new Error('手动模式下请先粘贴 cookies.txt 内容');
+          }
+        } else {
+          resolvedCookieFileName = null;
         }
 
         const settings = collectSettings();
         settings.defaultCookieFileName = resolvedCookieFileName || null;
+        settings.defaultCookieBrowser = resolvedCookieBrowser;
+        settings.defaultCookieBrowserProfile = resolvedCookieBrowser ? resolvedCookieBrowserProfile : null;
 
         const response = await fetch('/api/settings', {
           method: 'PUT',
@@ -1328,6 +1386,49 @@
       } catch (error) {
         settingsMessage.textContent = `保存失败: ${String(error.message || error)}`;
       }
+    }
+
+    function syncCookieModeUi() {
+      const mode = defaultCookieMode.value;
+      cookieBrowserFields.style.display = mode === 'browser' ? 'grid' : 'none';
+      cookieManualFields.style.display = mode === 'manual' ? 'block' : 'none';
+      updateCookieStatus();
+    }
+
+    function updateCookieStatus() {
+      const mode = defaultCookieMode.value;
+      if (mode === 'browser') {
+        const browserValue = emptyToNull(defaultCookieBrowser.value);
+        const profileValue = emptyToNull(defaultCookieBrowserProfile.value);
+        if (!browserValue) {
+          globalCookieStatus.textContent = '请选择要自动读取 Cookie 的浏览器。';
+          return;
+        }
+
+        const browserLabel = defaultCookieBrowser.options[defaultCookieBrowser.selectedIndex]?.text || browserValue;
+        const lowerBrowser = String(browserValue).toLowerCase();
+        const baseText = profileValue
+          ? `当前将自动读取 ${browserLabel} 的 Cookie，Profile：${profileValue}。`
+          : `当前将自动读取 ${browserLabel} 的默认 Profile Cookie。`;
+        const chromiumBrowsers = new Set(['chrome', 'edge', 'brave', 'chromium', 'opera', 'vivaldi', 'whale']);
+        globalCookieStatus.textContent = chromiumBrowsers.has(lowerBrowser)
+          ? `${baseText} Windows 下这类 Chromium 浏览器有时会锁住 Cookie 数据库；如果遇到 “Could not copy Chrome cookie database”，最简单是彻底退出浏览器后重试，或者改用 Firefox。`
+          : baseText;
+        return;
+      }
+
+      if (mode === 'manual') {
+        if (globalCookieContent.value.trim()) {
+          globalCookieStatus.textContent = '保存后会导入新的 cookies.txt 内容，并在解析和下载时自动使用。';
+        } else if (currentDefaultCookieFileName) {
+          globalCookieStatus.textContent = `当前仍会使用已保存的 Cookie 文件：${currentDefaultCookieFileName}。如需更新请重新粘贴后保存。`;
+        } else {
+          globalCookieStatus.textContent = '手动模式下请粘贴 Netscape/cookies.txt 内容后再保存。';
+        }
+        return;
+      }
+
+      globalCookieStatus.textContent = '';
     }
 
     function renderStatus(status) {
@@ -1650,6 +1751,8 @@
         defaultQuality: settingsFields.defaultQuality.value.trim(),
         defaultSubtitleLanguages: defaultSubtitleLanguages.slice(),
         defaultCookieFileName: currentDefaultCookieFileName || null,
+        defaultCookieBrowser: currentDefaultCookieBrowser || null,
+        defaultCookieBrowserProfile: currentDefaultCookieBrowserProfile || null,
         toolOverrides: {
           ytDlpPath: emptyToNull(settingsFields.ytDlpPath.value),
           ffmpegPath: emptyToNull(settingsFields.ffmpegPath.value),
@@ -2212,6 +2315,11 @@
     defaultSubtitleInput.addEventListener('keydown', event => {
       if (event.key === 'Enter') { event.preventDefault(); addDefaultSubtitleLanguage(); }
     });
+
+    defaultCookieMode.addEventListener('change', syncCookieModeUi);
+    defaultCookieBrowser.addEventListener('change', updateCookieStatus);
+    defaultCookieBrowserProfile.addEventListener('input', updateCookieStatus);
+    globalCookieContent.addEventListener('input', updateCookieStatus);
 
     parseBtn.addEventListener('click', parseCurrentUrl);
     queueBtn.addEventListener('click', addToQueue);
